@@ -1,0 +1,144 @@
+/* 全局设计变量与基础排版。
+   所有颜色先集中在这里定义，组件只引用变量，不再各自写近似色。 */
+:root {
+  /* 品牌颜色 */
+  --color-primary: #1177F1;
+  --color-primary-hover: #2D9BFA;
+  --color-primary-active: #0D63D4;
+  --color-secondary: #45C5F5;
+  --color-mint: #73E0DA;
+
+  /* 背景颜色 */
+  --color-page-bg: #EAF5FF;
+  --color-workspace-bg: #F5FAFF;
+  --color-panel-bg: #FFFFFF;
+  --color-panel-header: #F0F8FF;
+
+  /* 边框颜色 */
+  --color-border: #D6E9FF;
+  --color-border-hover: #A9D5FF;
+
+  /* 文字颜色 */
+  --color-text-primary: #244B7A;
+  --color-text-secondary: #7692B8;
+  --color-text-inverse: #FFFFFF;
+
+  /* 状态颜色 */
+  --color-success: #32B987;
+  --color-warning: #F4AD45;
+  --color-danger: #F16C78;
+  --color-purple: #9270E8;
+
+  /* 状态文字色：纯状态色在白底上偏浅，文字改用同色系深一档 */
+  --color-success-text: #218B67;
+  --color-warning-text: #A66A13;
+  --color-danger-text: #C84C5A;
+
+  /* 浅色底：分类图标、状态标签、提示条共用 */
+  --color-primary-soft: #E6F3FF;
+  --color-secondary-soft: #E7F8FD;
+  --color-mint-soft: #E6FBF9;
+  --color-purple-soft: #F0EBFC;
+  --color-slate-soft: #EEF3FA;
+  --color-success-soft: #E6F8F0;
+  --color-warning-soft: #FFF4DF;
+  --color-danger-soft: #FFECEF;
+
+  /* 装饰色 */
+  --color-decor-soft: #DCEEFF;
+  --color-decor-light: #B8DFFF;
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, #1177F1 0%, #2D9BFA 100%);
+  --gradient-header: linear-gradient(90deg, #1177F1 0%, #2D9BFA 65%, #45C5F5 100%);
+  --gradient-log: linear-gradient(90deg, #1177F1 0%, #2D9BFA 100%);
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* 阴影 */
+  --shadow-card: 0 4px 16px rgba(17, 119, 241, 0.08);
+  --shadow-hover: 0 8px 24px rgba(17, 119, 241, 0.14);
+  --shadow-button: 0 4px 10px rgba(17, 119, 241, 0.20);
+
+  /* 间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* 动画 */
+  --transition-fast: 0.18s ease;
+  --transition-normal: 0.25s ease;
+
+  /* 旧变量名统一指向新色板，避免各文件残留近似色 */
+  --page: var(--color-page-bg);
+  --surface: var(--color-panel-bg);
+  --surface-soft: var(--color-workspace-bg);
+  --surface-muted: var(--color-primary-soft);
+  --ink: var(--color-text-primary);
+  --ink-2: var(--color-text-primary);
+  --muted: var(--color-text-secondary);
+  --muted-2: var(--color-text-secondary);
+  --line: var(--color-border);
+  --line-strong: var(--color-border-hover);
+  --accent: var(--color-primary);
+  --accent-strong: var(--color-primary-active);
+  --accent-soft: var(--color-primary-soft);
+  --ok: var(--color-success);
+  --warn: var(--color-warning);
+  --danger: var(--color-danger);
+  --tx: var(--color-primary);
+  --rx: var(--color-success-text);
+  --radius: var(--radius-md);
+
+  --menubar-h: 52px;
+  --app-pad: 12px;
+  --split-size: 10px;
+  --font-ui: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display: "KaiTi", "STKaiti", "Kaiti SC", "Noto Serif SC", "Songti SC", serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", "Consolas", "SFMono-Regular", "Menlo", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: var(--color-page-bg);
+  /* 页面底纹：两团低透明度光晕加一层极淡点阵，只在面板间隙露出 */
+  background-image:
+    radial-gradient(circle at 92% 6%, rgba(69, 197, 245, 0.18), transparent 26%),
+    radial-gradient(circle at 6% 96%, rgba(115, 224, 218, 0.16), transparent 24%),
+    radial-gradient(rgba(17, 119, 241, 0.07) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
+  background-attachment: fixed;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font-family: inherit; color: inherit; }
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -1,0 +1,103 @@
+/* ---------- 响应式 ----------
+   横向三栏一直保留到 820px，窗口化时仍可拖动调节；
+   更窄才改为上下堆叠（分类区变成横向按钮条）。 */
+@media (max-width: 760px) {
+  /* 窗口变窄时收起顶部云朵与星星，避免压住菜单 */
+  .menubar::before,
+  .menubar::after { display: none; }
+}
+
+@media (max-width: 820px) {
+  body { overflow: auto; }
+
+  .app {
+    height: auto;
+    min-height: calc(100vh - var(--menubar-h));
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(400px, 58vh) 300px 190px;
+    padding: 10px;
+    row-gap: 10px;
+  }
+
+  .toolbox-panel { grid-column: 1; grid-row: 1; }
+  .editor-panel { grid-column: 1; grid-row: 2; }
+  .code-panel { grid-column: 1; grid-row: 3; }
+  .log-panel { grid-column: 1; grid-row: 4; }
+  .split-v, .split-h, .split-fixed { display: none; }
+  .app.log-hidden { grid-template-rows: auto minmax(400px, 58vh) 300px; }
+
+  .panel-head { height: 46px; padding: 0 12px; }
+  .toolbox-head { height: 46px; padding: 0; }
+
+  .toolbox-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    overflow: visible;
+  }
+
+  .toolbox-item { flex: 0 0 auto; min-width: 100px; padding: 0 12px; }
+
+  /* 分类区改为横向按钮条后，底部的皮影装饰不再适用 */
+  .toolbox-panel::after,
+  .toolbox-panel::before { display: none; }
+
+  .workspace-wrap { margin: 8px; }
+}
+
+@media (max-width: 680px) {
+  .menubar { gap: 0; padding: 0 10px; }
+  .brand { gap: 6px; margin-right: 4px; padding-right: 8px; }
+  .brand-title { font-size: 16px; }
+  .menu-btn { padding: 0 9px; }
+  .btn { height: 36px; padding: 0 13px; font-size: 13px; }
+  .panel-actions .btn { height: 30px; padding: 0 12px; font-size: 12.5px; }
+  .app { grid-template-rows: auto minmax(360px, 54vh) 270px 180px; }
+  .app.log-hidden { grid-template-rows: auto minmax(360px, 54vh) 270px; }
+  .panel-head { padding: 0 12px; }
+  .toolbox-head { padding: 0; }
+}
+
+@media (max-width: 560px) {
+  .modal-mask { padding: 10px; align-items: flex-start; }
+  .modal { max-height: calc(100vh - 20px); }
+  .modal-head { padding: 16px 16px 13px; }
+  .modal-head h2 { font-size: 18px; }
+  .modal-body { padding: 14px 16px 16px; }
+  .segmented button { padding: 0 8px; font-size: 12px; }
+  .field-grid { grid-template-columns: 1fr; gap: 12px; }
+  .modal-foot { padding: 12px 16px; flex-wrap: wrap; }
+  .modal-foot .hint-inline { width: 100%; margin-bottom: 4px; }
+}
+
+@media (max-width: 480px) {
+  .menubar { padding: 0 8px; }
+  .brand { margin-right: 2px; padding-right: 6px; }
+  .brand-title { display: none; }
+  .menu-btn { padding: 0 7px; }
+  .btn { padding: 0 11px; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

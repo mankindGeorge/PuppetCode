@@ -1,0 +1,55 @@
+/* 代码预览：白色卡片和浅蓝标题栏，代码本身保持清晰安静。 */
+.code-panel {
+  grid-column: 5;
+  grid-row: 1;
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 语言标签做成小胶囊，不再用半透明白字 */
+.code-head .lang {
+  padding: 2px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+.code-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-panel-bg);
+  padding: 16px 18px 24px;
+}
+
+#codeText {
+  display: block;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--color-text-primary);
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* 轻量语法高亮：只给关键字、字符串、数字和注释上色 */
+.tok-keyword {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.tok-string { color: var(--color-success); }
+
+.tok-number { color: var(--color-purple); }
+
+.tok-comment { color: var(--color-text-secondary); }

@@ -1,0 +1,345 @@
+/* ---------- 主布局 ----------
+   三个卡片面板：积木分类区（固定宽）、积木编辑区、代码预览，
+   底部是横跨整行的运行日志。面板之间留出呼吸间距，分割线只作为拖拽提示。 */
+.app {
+  --toolbox-width: 152px;
+  --code-width: 400px;
+  --log-height: 156px;
+  height: calc(100vh - var(--menubar-h));
+  display: grid;
+  grid-template-columns: var(--toolbox-width) var(--split-size) minmax(0, 1fr) var(--split-size) var(--code-width);
+  grid-template-rows: minmax(0, 1fr) var(--split-size) var(--log-height);
+  padding: var(--app-pad);
+  gap: 0;
+  background: transparent;
+}
+
+/* 日志收起：底部两行归零，编辑区占满剩余高度 */
+.app.log-hidden {
+  grid-template-rows: minmax(0, 1fr) 0 0;
+}
+
+.app.log-hidden .log-panel,
+.app.log-hidden .split-h { display: none; }
+
+.panel {
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---------- 面板标题栏 ---------- */
+.panel-head {
+  height: 50px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel-header);
+}
+
+.panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+/* 面板图标来自分割后的贴纸素材，放在标题左侧 */
+.panel-title::before {
+  content: "";
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  background: center / contain no-repeat;
+}
+
+.toolbox-head .panel-title::before { background-image: url('../assets/decor/icon-blocks.png'); }
+.editor-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-editor.png'); }
+.code-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-code.png'); }
+.log-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-log.png'); }
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 编辑区右上角的运行/停止按钮：比弹窗按钮更紧凑，但仍是视觉焦点 */
+.panel-actions .btn {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+/* ---------- 拖动手柄 ----------
+   10px 的间距本身就是命中区，中间画一条 2px 的浅蓝提示线。 */
+.splitter {
+  position: relative;
+  background: transparent;
+  touch-action: none;
+  z-index: 5;
+}
+
+.splitter::before {
+  content: "";
+  position: absolute;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+  transition: background var(--transition-fast), width var(--transition-fast), height var(--transition-fast);
+}
+
+.split-v {
+  grid-column: 4;
+  grid-row: 1;
+  cursor: col-resize;
+}
+
+.split-v::before {
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
+.split-h {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  cursor: row-resize;
+}
+
+.split-h::before {
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.splitter:hover::before,
+.splitter.active::before,
+.splitter:focus-visible::before {
+  background: var(--color-border-hover);
+}
+
+.split-v:hover::before,
+.split-v.active::before,
+.split-v:focus-visible::before { width: 3px; }
+
+.split-h:hover::before,
+.split-h.active::before,
+.split-h:focus-visible::before { height: 3px; }
+
+.splitter:focus-visible { outline: none; }
+
+/* 分类区与编辑区之间用固定间距分隔，不画线 */
+.split-fixed {
+  grid-column: 2;
+  grid-row: 1;
+  cursor: default;
+  pointer-events: none;
+}
+
+.split-fixed::before { display: none; }
+
+body.is-resizing { user-select: none; }
+body.is-resizing-v { cursor: col-resize; }
+body.is-resizing-h { cursor: row-resize; }
+
+/* ---------- 左侧积木分类区 ---------- */
+.toolbox-panel {
+  --toolbox-decor-h: 132px;
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  background: var(--color-panel-bg);
+}
+
+.toolbox-head {
+  justify-content: center;
+  padding: 0;
+}
+
+/* 分类区底部的光晕与皮影角色，垫在按钮下方，不参与交互 */
+.toolbox-panel::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  width: 170px;
+  height: 120px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(69, 197, 245, 0.26), transparent 68%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.toolbox-panel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 118px;
+  height: var(--toolbox-decor-h);
+  transform: translateX(-50%);
+  background: url('../assets/decor/character-opera-blue.png') center bottom / contain no-repeat;
+  opacity: 0.96;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.toolbox-list {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 底部留出皮影装饰的高度，分类按钮不会压到图案上 */
+  padding: 12px 12px calc(var(--toolbox-decor-h, 132px) + 14px);
+}
+
+.toolbox-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-bg);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.toolbox-item:hover {
+  background: var(--color-workspace-bg);
+  border-color: var(--color-border-hover);
+  box-shadow: 0 2px 8px rgba(17, 119, 241, 0.06);
+}
+
+.toolbox-item[aria-pressed="true"] {
+  background: var(--color-primary-soft);
+  border-color: var(--color-border-hover);
+  color: var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* 六个分类各用一种辅助色，图标底色取同色系的浅色 */
+.toolbox-item:nth-child(1) {
+  --cat-color: var(--color-primary);
+  --cat-soft: var(--color-primary-soft);
+}
+.toolbox-item:nth-child(2) {
+  --cat-color: var(--color-secondary);
+  --cat-soft: var(--color-secondary-soft);
+}
+.toolbox-item:nth-child(3) {
+  --cat-color: var(--color-purple);
+  --cat-soft: var(--color-purple-soft);
+}
+.toolbox-item:nth-child(4) {
+  --cat-color: var(--color-text-secondary);
+  --cat-soft: var(--color-slate-soft);
+}
+.toolbox-item:nth-child(5) {
+  --cat-color: var(--color-success);
+  --cat-soft: var(--color-success-soft);
+}
+.toolbox-item:nth-child(6) {
+  --cat-color: var(--color-warning);
+  --cat-soft: var(--color-warning-soft);
+}
+
+/* 分类图标靠左固定，文字紧随其后左对齐 */
+.toolbox-item-icon {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--cat-soft, var(--color-primary-soft));
+  color: var(--cat-color, var(--color-primary));
+  transition: background var(--transition-fast);
+}
+
+.toolbox-item-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.toolbox-item[aria-pressed="true"] .toolbox-item-icon {
+  background: var(--color-panel-bg);
+}
+
+.toolbox-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 中央积木编辑区 ---------- */
+.editor-panel {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-panel-bg);
+}
+
+.workspace-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-workspace-bg);
+  overflow: hidden;
+}
+
+#blocklyDiv {
+  position: absolute;
+  inset: 0;
+}
+
+/* Blockly 自带的分类栏在编辑区内部，视觉上要完全隐藏：
+   宽度压到 0，flyout 因此紧贴编辑区左缘弹出，也就是分类区右侧。 */
+.blocklyToolboxDiv {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

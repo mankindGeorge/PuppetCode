@@ -1,0 +1,574 @@
+# 光影智编（PuppetCode）· 接口与扩展开发文档
+
+- 文档版本：1.0
+- 协议版本：1.0（`PROTOCOL_VERSION = "1.0"`）
+- 适用固件：`main.py`（ESP32 / MicroPython 标准固件）
+- 适用前端：`index.html`（单文件，内联 Blockly 11.2.2 官方 UMD 构建与中文语言包）
+
+本工具面向 **4 路舵机皮影机器人**。硬件、积木、通信均按此边界设计，没有集成其他传感器或外设，也没有引入任何第三方依赖库。
+
+---
+
+## 1. 系统组成与通信架构
+
+```
+┌──────────────────────────────┐        JSON 报文         ┌──────────────────────────┐
+│  index.html（浏览器）          │  ──────────────────────▶ │  ESP32 main.py            │
+│  Blockly → MicroPython 代码   │                          │  exec() 执行 / 4 路舵机    │
+│  Transport 抽象层             │  ◀────────────────────── │  servo_set / action_*      │
+└──────────────────────────────┘        ack / log / done   └──────────────────────────┘
+        │                                                              ▲
+        ├── USB 串口（Web Serial，换行分隔 JSON）                       │
+        ├── WiFi STA（WebSocket，ws://设备IP:8080）                     │
+        └── WiFi AP （WebSocket，ws://192.168.4.1:8080）                 │
+```
+
+三种通信方式共用同一套上层逻辑：
+
+- 代码下发：`run`
+- 停止执行：`stop`
+- 日志回传：`log` / `ack` / `done` / `error`
+- 设备就绪：`ready`
+
+底层只在“如何收发一条 JSON”上不同，因此**后续原生移动端 APP 可以直接复用本协议**。
+
+---
+
+## 2. 通用协议规范
+
+### 2.1 报文封装
+
+| 通信方式 | 封装方式 | 编码 | 分隔 |
+| --- | --- | --- | --- |
+| USB 串口 | NDJSON：一条 JSON 占一行 | UTF-8 | `\n`（容忍 `\r\n`） |
+| WiFi STA | WebSocket 文本帧，一帧一条 JSON | UTF-8 | 无需分隔符；多行文本也可按行解析 |
+| WiFi AP | 同 WiFi STA | UTF-8 | 同上 |
+
+约定：
+
+1. 所有报文都是 **UTF-8 编码的 JSON 对象**，顶层必须是对象（`{}`）。
+2. 报文字段采用**只增不改**的原则扩展，未知字段接收方应忽略。
+3. 未知 `type` 的报文接收方应静默忽略，不得因此断开连接。
+4. 串口原始输出中不是 JSON 的行，前端按“设备原始输出”展示，不影响协议解析。
+5. 前端串口发送的代码行长度上限为 256 KB；设备 WebSocket 单条消息上限为 512 KB。
+
+### 2.2 消息类型总表
+
+| type | 方向 | 用途 |
+| --- | --- | --- |
+| `hello` | 前端 → 设备 | 串口握手，请求设备上报 `ready` |
+| `ready` | 设备 → 前端 | 设备就绪、报告通信模式与协议版本 |
+| `run` | 前端 → 设备 | 下发完整 MicroPython 代码（一次性 `exec`） |
+| `stop` | 前端 → 设备 | 请求停止当前执行 |
+| `ack` | 设备 → 前端 | 分阶段确认：已接收 / 开始执行 / 正在停止 |
+| `log` | 设备 → 前端 | 打印信息、运行日志、告警、错误 |
+| `done` | 设备 → 前端 | 一次执行结束（成功 / 停止 / 异常） |
+| `error` | 设备 → 前端 | 请求被拒绝等协议级错误 |
+
+### 2.3 完整数据结构
+
+#### 2.3.1 hello（前端 → 设备）
+
+```json
+{
+  "type": "hello",
+  "protocol": "1.0"
+}
+```
+
+- 仅 USB 串口模式需要主动发送；WiFi 模式设备在连接建立后立即推送 `ready`。
+- 前端在串口打开后约 1.2 秒发送第 1 次，随后每 1.5 秒重试，最多 3 次。
+
+#### 2.3.2 ready（设备 → 前端）
+
+```json
+{
+  "type": "ready",
+  "mode": "SERIAL",
+  "protocol": "1.0"
+}
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `mode` | string | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
+| `protocol` | string | 协议版本，当前为 `1.0` |
+
+#### 2.3.3 run（前端 → 设备）
+
+```json
+{
+  "type": "run",
+  "id": "run-1726999999999",
+  "code": "# 光影智编 · PuppetCode\nservo_set(1, 90)\npuppet_delay(1)\n"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `id` | string | 是 | 本次执行标识，前端生成；设备原样回传 |
+| `code` | string | 是 | **完整**的 MicroPython 源码字符串 |
+
+设备收到后：
+
+1. 立即返回 `ack(stage=received)`；
+2. 在独立线程中调用一次 `exec(code, env)`，**不是逐行 / 逐指令执行**；
+3. 返回 `ack(stage=started)`，随后输出 `log`，结束时返回 `done`。
+
+#### 2.3.4 stop（前端 → 设备）
+
+```json
+{ "type": "stop" }
+```
+
+设备返回 `ack(stage=stopping)`，随后中断执行并返回 `done`（见 5.3）。
+
+#### 2.3.5 ack（设备 → 前端）
+
+```json
+{ "type": "ack", "stage": "received", "id": "run-1726999999999" }
+{ "type": "ack", "stage": "started",  "id": "run-1726999999999" }
+{ "type": "ack", "stage": "stopping" }
+```
+
+| stage | 含义 |
+| --- | --- |
+| `received` | 代码报文已接收，准备执行 |
+| `started` | 执行线程已启动 |
+| `stopping` | 停止请求已接收，正在中断 |
+
+#### 2.3.6 log（设备 → 前端）
+
+```json
+{
+  "type": "log",
+  "level": "print",
+  "message": "hello from puppet"
+}
+```
+
+| level | 含义 | 前端展示 |
+| --- | --- | --- |
+| `print` | 用户代码 `print()` 的一行输出 | 紫色“打印”标签 |
+| `info` | 设备内部状态（开始执行、已停止等） | “设备”标签 |
+| `warn` | 告警（如停止超时、即将软复位） | “警告”标签 |
+| `error` | 运行异常摘要 | “错误”标签 |
+
+说明：异常堆栈通过 `sys.print_exception()` 输出，逐行以 `print` 级别回传；错误摘要本身以 `error` 级别回传。
+
+#### 2.3.7 done（设备 → 前端）
+
+```json
+{ "type": "done", "id": "run-1726999999999", "ok": true, "reason": null }
+{ "type": "done", "id": "run-1726999999999", "ok": false, "reason": "stopped" }
+{ "type": "done", "id": "run-1726999999999", "ok": false, "reason": "error" }
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 对应 `run.id` |
+| `ok` | boolean | 是否完整执行成功 |
+| `reason` | string \| null | `null` / `stopped` / `error` |
+
+#### 2.3.8 error（设备 → 前端）
+
+```json
+{
+  "type": "error",
+  "id": "run-1726999999999",
+  "message": "已有代码正在执行，请先发送停止指令"
+}
+```
+
+`id` 可能为 `null`（与具体执行无关的错误，例如协议级异常）。
+
+### 2.4 典型时序
+
+#### 串口执行
+
+```
+前端                                  设备
+ │  hello                              │
+ │ ──────────────────────────────────▶ │
+ │  ready                              │
+ │ ◀────────────────────────────────── │
+ │  run {id, code}                     │
+ │ ──────────────────────────────────▶ │
+ │  ack received                       │
+ │ ◀────────────────────────────────── │
+ │  ack started                        │
+ │ ◀────────────────────────────────── │
+ │  log(print, "打印内容")              │
+ │ ◀────────────────────────────────── │
+ │  done {ok:true}                     │
+ │ ◀────────────────────────────────── │
+```
+
+#### 中途停止
+
+```
+前端                                  设备
+ │  stop                               │
+ │ ──────────────────────────────────▶ │
+ │  ack stopping                       │
+ │ ◀────────────────────────────────── │
+ │  log(warn, "执行已停止")             │
+ │ ◀────────────────────────────────── │
+ │  done {ok:false, reason:"stopped"}  │
+ │ ◀────────────────────────────────── │
+```
+
+---
+
+## 3. USB 串口模式（默认）
+
+### 3.1 连接流程
+
+1. ESP32 烧录 `main.py` 后复位；`COMM_MODE = "SERIAL"`。
+2. 浏览器用 Chrome / Edge 打开 `index.html`（`file://` 或 `https://`）。
+3. 打开「设置」→「USB 串口」，选择波特率（默认 `115200`，需与固件 REPL 一致）。
+4. 点击「连接」，浏览器弹出串口选择框（Web Serial `navigator.serial.requestPort()`）。
+5. 串口打开后，前端等待设备 `ready`；若未收到，则发送 `hello` 重试。
+6. 收到 `ready` 后即可「运行」。
+
+### 3.2 注意事项
+
+- Web Serial 仅 Chrome / Edge 支持；不支持时前端会提示，可改用 WiFi 模式。
+- 部分 ESP32 开发板在打开串口时会因 DTR/RTS 自动复位，因此前端不会在打开瞬间下发代码，而是等待约 1.2 秒并重试握手。
+- 串口同时承载 REPL 与协议报文；设备启动阶段的非 JSON 文本会在前端日志中显示为“设备原始输出”。
+- 串口与 WebSocket 的 JSON 结构完全一致，方便后续 APP 复用。
+
+---
+
+## 4. WiFi 模式
+
+### 4.1 WiFi STA（设备连接路由器）
+
+固件配置（`main.py` 顶部）：
+
+```python
+COMM_MODE = "WIFI_STA"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+WS_PORT = 8080
+```
+
+连接流程：
+
+1. 烧录固件并复位，设备自动连接路由器；若 30 秒未连上会持续重试。
+2. 通过 USB 串口监视器（可选）查看设备打印的 IP；也可在路由器后台查询。
+3. 前端「设置」→「WiFi STA」，填写设备 IP 与端口（默认 8080）。
+4. 点击「连接」，浏览器建立 `ws://<设备IP>:<端口>`。
+5. 设备完成 WebSocket 握手后立即推送 `ready`。
+
+WiFi 名称 / 密码输入框仅作为本机配置记录与核对，前端不会向设备下发 WiFi 配置；修改网络必须改固件常量。
+
+### 4.2 WiFi AP（设备创建热点）
+
+固件配置：
+
+```python
+COMM_MODE = "WIFI_AP"
+AP_SSID = "PuppetRobot"
+AP_PASSWORD = "12345678"
+AP_IP = "192.168.4.1"
+WS_PORT = 8080
+```
+
+连接流程：
+
+1. 复位设备，开启热点 `PuppetRobot`（密码 `12345678`）。
+2. 电脑连接该热点。
+3. 前端「设置」→「WiFi AP」，设备 IP 默认 `192.168.4.1`、端口 `8080`。
+4. 点击「连接」，建立 WebSocket 并等待 `ready`。
+
+### 4.3 WebSocket 协议细节
+
+- 设备使用标准库 `socket` 实现 RFC 6455 服务端，**不依赖第三方 WebSocket 库**。
+- 仅接受文本帧（opcode `0x1`）与分片文本；二进制帧忽略。
+- 支持 `ping` / `pong`（opcode `0x9` / `0xA`）与 `close`（`0x8`）。
+- 同一时间只服务一个客户端；客户端断开后自动回到监听状态。
+- 服务端 → 客户端帧不加掩码；客户端 → 服务端必须加掩码（浏览器自动完成）。
+
+### 4.4 混合内容提示
+
+如果页面以 `https://` 方式部署，浏览器可能阻止 `ws://` 明文连接。此时请：
+
+- 直接以 `file://` 打开单文件前端，或
+- 使用 `http://` 本地页面访问，或
+- 让设备与页面处于浏览器允许的上下文中。
+
+---
+
+## 5. 执行与停止语义
+
+### 5.1 一次性执行
+
+设备在独立线程中执行：
+
+```python
+exec(code, env)
+```
+
+- `code` 是前端下发的**完整源码字符串**，一次性执行。
+- `env` 仅注入硬件函数：`servo_set`、`puppet_delay`、`action_bow`、`action_wave`、`action_nod`；内置函数（`print` 等）由 MicroPython 提供。
+- 不逐行下发、不逐指令解释、不做代码改写。
+
+### 5.2 输出回传
+
+执行期间 `sys.stdout` 被替换为 `_LogStream`，`print()` 的每一行转换为：
+
+```json
+{ "type": "log", "level": "print", "message": "..." }
+```
+
+执行结束后恢复原始 `stdout`。
+
+### 5.3 停止
+
+停止是**协作式中断 + 超时强制恢复**：
+
+1. 前端发送 `{ "type": "stop" }`。
+2. 设备置位 `_stop_flag`，返回 `ack(stopping)`。
+3. `puppet_delay()` 每 20 ms 检查一次停止标志；`servo_set()` 在入口检查一次；命中时抛出内部 `_StopRequested`，执行线程退出。
+4. 若 3 秒（`STOP_TIMEOUT_MS`）内执行线程仍未退出（例如用户代码是没有任何延时/舵机调用的死循环），设备执行 `machine.soft_reset()`，强制回到待机状态。
+5. 前端收到 `done` 后恢复「运行」按钮。
+
+限制说明：MicroPython 无法从外部异步杀死任意 Python 字节码，因此“纯计算死循环”只能靠软复位恢复。软复位后：
+
+- WiFi 模式：WebSocket 连接断开，需要重新连接；
+- 串口模式：设备重新运行 `main.py`，串口链路通常保持，可重新握手。
+
+### 5.4 上电行为
+
+设备上电只做三件事：
+
+1. 初始化 4 路舵机 PWM（占空比 0，不输出脉冲，不产生动作）；
+2. 初始化所选通信模块；
+3. 等待前端指令。
+
+**不会自动执行任何积木或动作。**
+
+---
+
+## 6. 前端积木与底层函数映射
+
+### 6.1 映射表
+
+| 积木（Blockly type） | 生成代码 | 底层实现 | 说明 |
+| --- | --- | --- | --- |
+| `controls_repeat_ext` | `for count in range(N):` | MicroPython 原生 | 标准重复 N 次 |
+| `puppet_delay` | `puppet_delay(秒)` | `main.py: puppet_delay()` | 分片睡眠，可被停止 |
+| `variables_set` | `变量 = 值` | MicroPython 原生 | 变量定义 / 赋值 |
+| `variables_get` | `变量` | MicroPython 原生 | 读取变量 |
+| `controls_if` | `if 条件:` / `else:` | MicroPython 原生 | 条件判断 |
+| `logic_compare` | `a == b`、`a < b` 等 | MicroPython 原生 | 为 `if` 提供布尔条件 |
+| `math_number` | 数字字面量 | MicroPython 原生 | 数字 |
+| `math_arithmetic` | `(a + b)` 等 | MicroPython 原生 | 加减乘除 |
+| `puppet_servo_set` | `servo_set(id, angle)` | `main.py: servo_set()` | 1-4 号舵机，0-180 度 |
+| `puppet_action_bow` | `action_bow()` | `main.py: action_bow()` | 预留，空实现 |
+| `puppet_action_wave` | `action_wave()` | `main.py: action_wave()` | 预留，空实现 |
+| `puppet_action_nod` | `action_nod()` | `main.py: action_nod()` | 预留，空实现 |
+
+说明：
+
+- `logic_compare` 是让 `if` 条件可用所必需的比较积木，与条件判断同属一类。
+- 组合动作积木显示「开发中」，只生成空函数调用；固件函数体只有 `# TODO: 填充实际皮影动作逻辑` 与 `pass`。
+- 代码生成器复用 Blockly 内置的 Python 生成器（MicroPython 属于 Python 3 方言），仅追加自定义积木的 `forBlock` 映射。
+
+### 6.2 生成示例
+
+积木组合：
+
+```
+重复 3 次
+    舵机 1 号 转到 90 度
+    等待 1 秒
+皮影挥手（开发中）
+```
+
+生成：
+
+```python
+# 光影智编 · PuppetCode
+# 目标硬件：ESP32 + 4 路舵机
+
+for count in range(3):
+  servo_set(1, 90)
+  puppet_delay(1)
+action_wave()
+```
+
+### 6.3 舵机函数参数
+
+```python
+servo_set(servo_id, angle)
+```
+
+| 参数 | 类型 | 范围 | 说明 |
+| --- | --- | --- | --- |
+| `servo_id` | int | 1-4 | 对应 `SERVO_PINS = (13, 14, 25, 26)` |
+| `angle` | number | 0-180 | 自动裁剪到边界 |
+
+底层参数：
+
+```python
+SERVO_FREQ = 50            # 50Hz
+SERVO_MIN_PULSE_US = 500   # 0 度
+SERVO_MAX_PULSE_US = 2500  # 180 度
+```
+
+角度换算为 16 位 PWM 占空比后写入 `duty_u16()`。
+
+---
+
+## 7. 扩展开发步骤
+
+以下扩展均不破坏现有协议与函数签名。
+
+### 7.1 新增一个自定义积木
+
+以“设置舵机速度”为例（仅示意如何接入，本工具当前未实现该功能）：
+
+1. **定义积木外观**：在 `index.html` 的 `defineCustomBlocks()` 中追加 JSON 定义。
+
+```js
+{
+  type: 'puppet_servo_speed',
+  message0: '舵机 %1 速度设为 %2',
+  args0: [
+    { type: 'field_dropdown', name: 'SERVO', options: [['1 号','1'],['2 号','2'],['3 号','3'],['4 号','4']] },
+    { type: 'input_value', name: 'SPEED', check: 'Number' }
+  ],
+  previousStatement: null,
+  nextStatement: null,
+  colour: '#2F8F7F'
+}
+```
+
+2. **加入工具箱**：在 `TOOLBOX_XML` 的「舵机控制」分类中增加对应 `<block>`。
+
+3. **添加代码生成映射**：在 `setupGenerator()` 中追加。
+
+```js
+Blockly.Python.forBlock['puppet_servo_speed'] = function (block, generator) {
+  var servo = block.getFieldValue('SERVO');
+  var speed = generator.valueToCode(block, 'SPEED', Blockly.Python.ORDER_NONE) || '1';
+  return 'servo_speed(' + servo + ', ' + speed + ')\n';
+};
+```
+
+4. **在固件中实现同名函数**：在 `main.py` 的硬件区增加 `servo_speed(servo_id, speed)`，并保持参数顺序与代码生成一致。
+
+5. **在本文档「映射表」中登记**，并更新协议版本说明（如需）。
+
+> 注意：新增积木的 `type`、生成的函数名、固件函数名必须一一对应；不得修改已有积木的 `type`。
+
+### 7.2 新增一个组合动作函数
+
+1. 在 `main.py` 的组合动作预留区追加函数，保持空实现与注释：
+
+```python
+def action_turn():
+    # TODO: 填充实际皮影动作逻辑
+    pass
+```
+
+2. 在 `defineCustomBlocks()` 增加积木，文本带「（开发中）」。
+
+3. 在 `setupGenerator()` 增加映射：
+
+```js
+Blockly.Python.forBlock['puppet_action_turn'] = function () {
+  return 'action_turn()\n';
+};
+```
+
+4. 在 `TOOLBOX_XML` 的「组合动作」分类中加入积木。
+
+5. 保持现有 `action_bow / action_wave / action_nod` 的函数名与参数不变。
+
+### 7.3 新增一种通信方式
+
+前端：
+
+1. 继承 `Transport` 抽象类，实现：
+
+```js
+class MyTransport extends Transport {
+  connect(config) { /* 建立连接，并 emitStatus('connected', 描述) */ }
+  disconnect() { /* 关闭连接，并 emitStatus('disconnected', '') */ }
+  send(message) { /* 发送一条 JSON；串口需补 '\n'，WebSocket 直接文本帧 */ }
+}
+```
+
+2. 在 `connectDevice()` 中按模式实例化新的 Transport，并复用 `bindTransport()`、`handleDeviceMessage()`、`runCode()`、`stopCode()`。
+
+固件：
+
+1. 在 `main.py` 顶部的 `COMM_MODE` 增加新的枚举值。
+2. 编写对应的初始化函数与收报循环，最终调用 `_handle_message(message)`。
+3. 发送统一走 `_send(message)`，不要另建报文格式。
+
+约束：
+
+- 必须保持 JSON 报文结构不变；
+- 必须支持 `hello` / `run` / `stop`；
+- 日志必须使用 `type=log` 回传。
+
+### 7.4 向后兼容规则
+
+1. `PROTOCOL_VERSION` 为 `1.0`；新增字段只增不改，接收方忽略未知字段。
+2. 不得删除或重命名已有 `type` / `stage` / `level` 枚举值。
+3. 不得修改 `servo_set(id, angle)`、`puppet_delay(seconds)`、`action_*()` 的参数顺序。
+4. 新增积木使用新的 `type`，不要覆盖已有积木定义。
+5. 前端忽略未知报文类型；固件忽略未知报文类型。
+
+---
+
+## 8. 移动端 APP 预留
+
+通信层与网页没有强绑定，APP 可按以下方式复用：
+
+1. **WiFi 模式**：直接实现 WebSocket 客户端，发送/接收同样的 JSON 文本帧。
+2. **USB / OTG 模式**：按 NDJSON 发送（每条 JSON + `\n`），波特率与固件一致。
+3. **未来蓝牙等新链路**：在 APP 内实现 `Transport` 等价层即可，无需改变设备协议。
+
+APP 最小接入流程：
+
+```
+connect() → 等待 ready（或发 hello）
+→ 发送 run {id, code}
+→ 渲染 ack / log / done 消息
+→ 需要中断时发送 stop
+```
+
+由于 `code` 字段就是完整源码字符串，APP 只需具备 Blockly（或任意积木引擎）生成 Python 的能力，无需了解设备内部实现。
+
+---
+
+## 9. 固件配置项速查（main.py）
+
+| 常量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `COMM_MODE` | `"SERIAL"` | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
+| `WIFI_SSID` | `YOUR_WIFI_SSID` | STA 模式路由器名称 |
+| `WIFI_PASSWORD` | `YOUR_WIFI_PASSWORD` | STA 模式路由器密码 |
+| `AP_SSID` | `PuppetRobot` | AP 热点名称 |
+| `AP_PASSWORD` | `12345678` | AP 热点密码（≥8 位） |
+| `AP_IP` | `192.168.4.1` | AP 模式设备 IP |
+| `WS_PORT` | `8080` | WebSocket 端口 |
+| `SERVO_PINS` | `(13, 14, 25, 26)` | 4 路舵机 GPIO |
+| `STOP_TIMEOUT_MS` | `3000` | 停止超时后软复位 |
+
+切换通信模式：修改 `COMM_MODE` → 保存 `main.py` → 复位设备。前端设置中的 WiFi 名称/密码不会写入设备。
+
+---
+
+## 10. 已知限制
+
+1. **Web Serial 浏览器支持**：仅 Chromium 系浏览器；不支持时请使用 WiFi STA / AP。
+2. **停止的强制恢复**：如 5.3 所述，纯计算死循环依赖软复位；软复位会中断 WiFi 连接。
+3. **单客户端**：WiFi WebSocket 服务同时间只接受一个客户端，便于皮影机器人单操作者场景。
+4. **无云端 / 无账号 / 无多设备管理**：本工具按需求边界未实现这些能力。
+5. **舵机供电**：4 路舵机应使用独立电源并共地，ESP32 仅提供信号；本工具不涉及电源管理。

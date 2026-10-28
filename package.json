@@ -1,0 +1,16 @@
+{
+  "name": "puppetcode",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "光影智编 · 4 路舵机图形化编程界面（Blockly + MicroPython）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode singlefile",
+    "build:web": "vite build --mode web"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11",
+    "vite-plugin-singlefile": "^2.0.3"
+  }
+}

@@ -1,0 +1,378 @@
+/* ---------- 顶部导航栏 ----------
+   蓝色渐变品牌条，菜单与品牌都保持白字，可点击区域仍排除拖拽。 */
+.menubar {
+  height: var(--menubar-h);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  background: var(--gradient-header);
+  color: var(--color-text-inverse);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 3px 12px rgba(17, 119, 241, 0.12);
+  position: relative;
+  z-index: 30;
+  /* 桌面版：整条菜单栏作为窗口拖动区，交互控件在下方单独排除 */
+  -webkit-app-region: drag;
+}
+
+/* 桌面版右侧留出系统原生窗口按钮的位置。
+   蓝色渐变在按钮区之前结束，剩余部分用渐变末端色兜底，
+   和 Electron titleBarOverlay 的颜色保持一致，避免出现白色接缝。 */
+body.is-desktop .menubar {
+  padding-right: 150px;
+  background-size: calc(100% - 150px) 100%;
+  background-repeat: no-repeat;
+  background-color: var(--color-secondary);
+}
+
+/* 菜单栏右侧的云朵，位于星星左侧，只做气氛，不接收鼠标 */
+.menubar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 190px;
+  width: 130px;
+  height: 100%;
+  background: url('../assets/decor/cloud-light.png') right center / contain no-repeat;
+  opacity: 0.30;
+  pointer-events: none;
+}
+
+/* 三颗大小不同的星星在右侧错位排布 */
+.menubar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 22px;
+  width: 130px;
+  height: 100%;
+  background-image:
+    url('../assets/decor/star-lg.png'),
+    url('../assets/decor/star-md.png'),
+    url('../assets/decor/star-sm.png');
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position:
+    right 6px top 6px,
+    right 42px top 26px,
+    right 20px top 38px;
+  background-size: 22px 22px, 15px 15px, 9px 9px;
+  opacity: 0.95;
+  filter: drop-shadow(0 1px 2px rgba(13, 63, 133, 0.28));
+  pointer-events: none;
+}
+
+/* 桌面版把装饰整体左移，避开原生窗口按钮 */
+body.is-desktop .menubar::before { right: 330px; }
+body.is-desktop .menubar::after { right: 168px; }
+
+.menubar .menu-root,
+.menubar .menu-btn,
+.menubar .menu-item,
+.menubar .menu-list {
+  -webkit-app-region: no-drag;
+}
+
+.brand,
+.menu-root {
+  position: relative;
+  z-index: 1;
+}
+
+.menu-root { position: relative; }
+
+.menu-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.menu-btn:hover,
+.menu-root.open .menu-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--color-text-inverse);
+}
+
+.menu-btn:active { transform: scale(0.97); }
+
+.menu-key {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  margin-left: 1px;
+}
+
+.menu-list {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-bg);
+  box-shadow: 0 12px 30px rgba(17, 119, 241, 0.16);
+  z-index: 40;
+}
+
+/* 下拉菜单的小尖角，与白色卡片连成一体 */
+.menu-list::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 16px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-panel-bg);
+  border-left: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+  border-radius: 3px 0 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.menu-list[hidden] { display: none; }
+
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.menu-item:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.menu-shortcut {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* 菜单项的当前状态文字，如「日志」的显示中 / 已收起 */
+.menu-state {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.menu-item:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.menu-item:disabled:hover {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 品牌区 ---------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-right: 6px;
+  padding-right: 12px;
+}
+
+/* 图标放进半透明白色小方块，压住渐变底色的干扰 */
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+}
+
+.brand-mark svg { width: 19px; height: 19px; }
+
+.brand-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  border-radius: 6px;
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--color-text-inverse);
+  text-shadow: 0 1px 3px rgba(13, 63, 133, 0.25);
+}
+
+/* 状态圆点：只用在设置弹窗里，顶部不再放连接胶囊 */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  flex: 0 0 auto;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dot.on {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(50, 185, 135, 0.16);
+}
+
+.dot.wait {
+  background: var(--color-warning);
+  box-shadow: 0 0 0 3px rgba(244, 173, 69, 0.18);
+}
+
+.dot.err {
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(241, 108, 120, 0.16);
+}
+
+/* ---------- 按钮 ----------
+   运行是主色渐变胶囊，停止是柔和红胶囊，其余按钮退为描边或纯文字。 */
+.btn {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast),
+    filter var(--transition-fast);
+}
+
+.btn:disabled { cursor: not-allowed; }
+
+.btn.run {
+  color: var(--color-text-inverse);
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-button);
+}
+
+.btn.run::before {
+  content: "▶";
+  font-size: 10px;
+  line-height: 1;
+}
+
+.btn.run:hover:not(:disabled) {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.btn.run:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  box-shadow: var(--shadow-button);
+}
+
+.btn.run:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  box-shadow: none;
+}
+
+.btn.stop {
+  color: var(--color-text-inverse);
+  background: var(--color-danger);
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 10px rgba(241, 108, 120, 0.20);
+}
+
+.btn.stop::before {
+  content: "■";
+  font-size: 9px;
+  line-height: 1;
+}
+
+.btn.stop:hover:not(:disabled) {
+  filter: brightness(0.96);
+  box-shadow: 0 6px 14px rgba(241, 108, 120, 0.26);
+}
+
+.btn.stop:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: 0 3px 8px rgba(241, 108, 120, 0.20);
+}
+
+.btn.stop:disabled {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  box-shadow: none;
+  filter: none;
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+  padding: 0 13px;
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.btn.primary {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-button);
+}
+
+.btn.primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn.primary:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  box-shadow: none;
+}

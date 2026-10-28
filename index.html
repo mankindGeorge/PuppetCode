@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>光影智编 · 图形化编程</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+</head>
+<body>
+
+<nav class="menubar" role="menubar" aria-label="主菜单">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <img class="brand-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAACLnSURBVHhejVsJeF1lmb6UbrlJmq07pdCm2ZO26ZLuCLS0tNlv9n1PmqY7dG9ilm7gMIiiKKMz4MbAKKjoIMhWlEUdkMWKLCKyKKQOLiOLPf+XzPt+/39ubtXHxzzP95xzb+8953/f7/22/9wG/tFffHb1wvjsmr74nJqH43Jq3ojPqT4bl1U9HJddOxyXUzccD7PH+uH4hY3DCYtguU2w1uHEpa3DSWrtw1OXtYePU5d1DE9dTms/O3V5p329rHN42vIuGI+wPFoXPuP+PfK7+rptOGkJDffJbYY1WcP9nf06YVH9owmLGvqJwcH55/9iMsszAfQumMQvahqlxeXUhy1+YQOsEe83jiYsah6NX9w8mgBLzG0ZBfjRxCXto0lLO0ax2NGpy7tgnTjvHAWo0el5W0enr+genQbjUc/zeNxmLc8eZ/iv+Rl+BzaNtgzXw7WsdeA+bbgvDffN5TqaRhNpWAtIGk1c1CDxixvuSsyqynDw/vFfTFppV2xW5QdxADkls3p0SlaNmZJVa+Kyar247DoDj5v4nAZrCxu9hEVNBiSYeFjC4haDhZjEJW0maUm7gec8LNJMXdYF6zTwsrW8rWrT87qdbTUAbGas7DEAfd77ICD8ehqvoddrN9OW8vq4D45QgknKbTYA7taD48IG4wyktMBxdX+Oy6nqdDD//l9MemnvlJwagK4ajc2o8mIzCb7GIwFTsuscAfUwgoctUgJgBI8F5DZ78IiXuLQDC8NCl3eCAAK3gOHpMXAEusIBdiBJgG9//W/8LsLDg4GEdg9GArypS1u9pCUtXlIuyAcBYRLoHK6R67WOg1qh5uyqPgf3/L+Y9LIOxDnAlwN8pUcCoACAVwJgSgCs3oP3Ped9B56eh8HziUuwIICG5yPAA8R5oJy3Fex2a6toO6zh9di/4UgSwmTger4SqDCQYAloVvBqXJOqoHGMACgZucuGc1Zlu4Nt/2LTitJiM8s/mpJZCfAVAF5lYgk+kyqoOjclkySMERCX0wgCmjxczEPM4aYtkKGVvXpeCaBR7vAcF7+yxwMYb7oP2IL0pvugaat3Wot4byaJsSR4IIBmSaAalGQSANLhACWBpo7B+kAAVRAmwJEQl13zUWx6VaqDHwhEp5XeE5tdMxqbXuHFplvvx2aQAAL3zREA76uRXSWgBTdFDDrw6n14HckPRs/R09sUvBLgA12100yHzVi1y8xcPWYzaHh/ppLBc0fGSqqGBIBMnwDeA0qwBHANyD+5FrwlwIZAfJgA5LLsWuYu5LeKeyz45MKsmPTQSGx6uVjwYwQgBwA45O/Hf7Yf/2CWcUbvU/q5lL4Dz4TnYt7GeoTUFYwDtnq3Bb2G5wRszyPJoOnn9XsksdubwevxunlOAUyCTIZMvjSoEWGpIQqVMllTtRa8T0JWzQgq3Gh0eml2IDqluD8GL2LSyz2YiaEKNP5rlIDYMAGUPi2SACS9sPQjZK8EwGNY7HmxraAsATPXgAC1Pe6I99a69xw5s5QQksNQ6PHUqAKSu7yDiRAhwDxAFcAJmgdIgCpAj1yrEgDPk4ApWdWGuY1VLjajfIDyPx2D2EcSBPiQYQ5Q7zsFxGaSAABX7yMBUvpklkkQBKj81QvIyip/LXUeFKDxqvEL8DNpBKKAYD7oNTu9WWt3w/YaHAHaJ8ESMBs2azXBdwN8lzcjr92bvrzVm7a0BQTgiBxgw8AngAnQJkHNUyRAHWdVoOEMXFA0w+BR1P3iN2MyykZj0sqoAABHCIChvw0BlT8uBGnx4mq40WJX9yMJyOuC9EGAhgBJ2GZmgggkNAABCWtIAME7I/h11yh4tbV7cNwJ2+HN5nHVVki/3ZuyqMWbkN7ojU+t94KZDd7UJU0wqrAVjmAYMhSgACXBKQCKtQpgCNcRj1UAch6S/luB6PTiszEZodFoJcDGfwxzAEmg98ME4EI2+RG4A08FRGZ/JiUmKDYwzAEgAjYjrxPhAO+ttIqYtXo7wPV4FiQB0/s0APcN4PE5b9YqxnyHNymz0Vt6dZu5dv8OOXx4p6zOb5FJaTUGnZ5J0koEInKZkNWUAKrUNm0+AQSPMND+BtUgs+IsQqB4OCajHAQgB6TZ+D+fALCGENAwAAEqf4B3nZ+H1tcpoFONcmSNRozC2tXiEZeTMhpgCB8QNnNFF7zaDSKoBudxZ7PX7TWzNRRAAGRPyfO7XTu2ya8e65X3/mdA3nt6SN5+YkBC9W0yIaVaSUhc3GibIRqbMnjfzwFWBawEdQAPTMCGUKAChgPBNCqg3CbBtPJzMela+9EH1DoC6tEFRhKg5Y/gVf4JKj0oQK1N29PYnCYzLqXOjE+tNdGZdWbW8jr5xIndcsPJPXLxikYzPq2eXtWwUBUQ8F8TwLhf0UnwXnlTh/wOwF//QZ+8/MhRtXd/NCiP3HVQ4rMrAbAWKmjwoAQSAfBs0tgJunzlCFD5U9FOAehzhhECJWcR/6oAVYFfBh0BkSoI5wAlAQrQ0kMCWIPZiDSZ8Sk1Ju2yetm1t1uaOjokcWGZfPVzu+WD54/LuTMn5bn7eiXU0CGT0utRNtuhhB4AZsKj1/2kh1yxcqs2OVOX1JtHv35AfvNkvwJ/5ZFe2FGooU9euP+oJK+qMTEZ1ZS3F0zX1t0kLqzzEnLqIH/0ADmsAmECbEiHCbAKGIbnR6NTy0CADQEmwJiM88qgy6Q2DzC7JrgcoG2wSq7BBC4tN+sKG+SVR/tk5NWT8sELx+S2m3fL1p42Gf7JoHzz9v3y1LcPy/vPD8l/3LxXZixvEZY0yF29rqZxj6SX1+ZFZzV4awtbzBs/7JNXHyXwXnn54Y+PvPJIv7z1+ID84BuHJD6zxATmFpuE7HKTvq7WzFhcaS6cH0LzU21Agot/PwdAyUqCJndLgOaAdJsDVAEMgcgyqAQ0mCnqfUcAwWuWpdSYZGqxiFJTVNMsv31qUL56yx6prKnDAg8A7Alp62qVVZurJYhSm7Swymwqa5I913TJxasbhd0cc4ElYCcI6EaH1+ZFIcsHLsFny5vN2/D+GAF9I6883Cd/evaE7NnTIYFpV5nWzhZ55L/289/k6e8ckdrmZrlwXrGSoJ2fKgEYmAN8FYCAWEtAyXkKsJVAwaMnoApYOpgDlAA1GwLaZyubBN/Y1qoyfe/pY5J7eUgCgZVm4EgHlHCdXLO3QyYvyJfAxSVe4NIyb0ZulVkfagIBzcKOkQRoLkDcT0ODM3tlq/eZG/ZK57YOSV9baX55uld+6Qh46eGjyAdDct9X9kt0ytXy6et75A/PHENS7JfX8Dmu4bdP9cuqq6tl/PwSbX6c90kA5A/wnG/8HBBMBwHoA6LTQtoFxqSFCYAxaYQTILzPpEKzpSU6vRrgi82uPZ0y/GMmqV5544f98rVbdkv31iZ5HjH60sO9Ul5XL09+85AMHO2Wz924S97CYn9071G5ZC16B/QKthwqASZ2UZu3urDdfPjCkPz8+70ya3GRPHDHPv3OqyCAFeDxew7JvGVb5JMnu+WPPz2G9/tADs2S9N7TgzLUuxWEF4KAKkeAS4KKiwSwClQ7AjKhgIwyAAIBNgegCkABkEysJYDSDxtjKyq10oyDzAb7uuV/kaFfO22z88vwEBf7Z8T/WyhVm8oa5ZOntor385PylzPH5Q8/HZIbTu2RuWtaJBFlk/E/S5MgCFi1jSOumbakwXzt1mvl/RdOyOayGqlrqZdzL56Ssz85Lp//1x0ybtaVsmpjKTw9BDWAAFXHGAlnkW9uvn6HBC5xBGC9qgBLAghgGVQFvMsqYBWQUQ4CMAuEvW8JIHglQA1JBTE1YUGZiUopls/esEvZpjxteWKMHhXGLM83ljdLYG6ZWYGm5e7b9su3vnRQLg91mgkZSJqYFGev2a6doG2BQQR6A5bRwCWVpg4h9b+49o/vPSRpq4rh7R4JIa/kXhGSfXtbpAmkLLmsRI71dqIkDmANyA16/175/TNDsmsX8sPcIqzZDwFisSogNiUggzkAZTDaKcAfhBS8/ZD9Ei+A8/isam/cvFKTmF1i7vy3vfJ7xLsvO//m72Axz33vqKzMb5ALFtSgKWo1MQtbTByqRTzKZvTCDpU6vW7Bs/Sh5V29TZukqIxa09bdpV69LL9SiiqrJHtdsQSCl8vKjRUIswEZefkUyDkmD9+5TxZdVixNbQ3yLkKQ5ZG54IX7j8ileWVmcmoZgHME9hXAPBBBQBZzAKoAwGM0JAGVfgioCgCchg/XePFZVYx379K8kHnwP/dDeoPO67Qj6vmzPx6SJxDrWVfUy7jUGpmOOs8WeCakbYeibbb91aaHzQ8zP+v+NnSUbWbGsgZz+2evQUhBVacHZO/uVrnxRDcIKJGNoRrZWFwp83MLUFp3QeYDSvbrjw1I6ooC+cSxrQixY/JrNEubyuog/xKotSaiDLokqARgIvSTIGaBYYCPqAI+ARwbOTmhlGRVmsCcQrP4inLzP985jIQH8ABsY57gj2indv8d+2XuymqZwE4P4Kej5dURVqe/XV5Y7uj2aFr61mzXfb6ERfXmm7cfgHdPosnphzf7QOgxAB2S02iEfvHQUXkHMd/egbCKv0L6UWFIAvuLOz63B5WnRO790jWy8uoagGcJhNP83kXBq/eBS3OAI0CToFPAeSHAJEgCKnEsM4GL8s2VRTW6CJaYMHjnfeaBu76wV5IWV2qHp7MAyhu9rgRg5LXjL70O7xP8OrS99D76/Tg0VFMXV5myugY5ObBNznwfagI4hgHDio3Qa+j8aH989rjs3tkmgbgr5EufoRIG5dc/HJCl68slMGezGT+/VPsS1H0OQjCOw+gBxuTPTpDlG32AK4M+AWgMkARJQJWCD6aVmgsu2SKtYP2Pzx5T8KzDGu8P9Y28io6P4D9/407B9yUqg+DpeYzBugPU481YvQMGAri7g6NOfT4BSHwJS9q8i1c2mv+89RpUix65HHE/f0mB/AskTXCs7WM5pm/ktdN9I8MItZVXlcvcpYUIlV75HVRSUtOkSU9lzzKtM4CC11HeEqAhEG6FlYDo9FJ0ghWjGIhMjA5BAJ4eguTzkekLJHkFkkxLrQwc7pAXHzyiJY61/ZenCX5Irhvq0YYjiJ6BGZydnW6DYe7XjdBV20HALphugHhW/lABcsFMjMcTMexcd3yXmBdPiPfiSTG/uE6+ddu1MjtnC5JbvSY3vwv0jVn/2/hMYPqV8pXP7tJus7AKSfdSeh9dn27YWOPsYuWvhnPkNO1vHAE6C0ABMRlohCD3qNQSM2F+gensbpWH79qvzchDdx6QnT0tkre+RH70rYNQwoB658D+LglcWoLv1WEYanUbIlvR3Gwz03QvkOB3MPbdjs8eJWA2wmDm6u0mLrfNy7yCre6A3mMvWtvD+zuESfa5+47IRYu2yNGD7ephq4BetsFq7/xoCMmxVHYjUf7l59dJzuWVMnEBZgAlwE2BSgBbYPU+nMsQsFUALb5PQFGYgGBaiRl3yRZz/VC3fPiz4/IeWsyXHuxFyTkuH505Jaf6u2RDYTleD0lXTzs6rWLtFfhUhvtyU5d3eSDAi9wKn76K8c8EuNsdEfcw7u1Nymz2tu7oNvf8x15ZeFmp7NzZKjed6pZ//9QOeQyJj1VgOpTw3PeOoPwxMVoSXn/s4yNvPzkoeRvKJCljixRU1EpMehE8Ww4C0Ku4EFDvc47RIaiOCTBMQKQCztpWuMRcMKfAW19cjUZiUF56CGMrGo+LsrZIfUuj3px9fnFFtSzfUCHsApFIOBBxHPbsjlAHCQAR+iTHC4eA7gT729x8jfdXbDUXpjZ4O/Zsky98skd+/mCfdo6Pfv2gHO/tksqGBrS8B+WSpQVy6409WvJY59l0vfn4oGworlJnfOWWXXLt3nZJyi4ybOfZqHHwoQowBuvswjlmjADb48SGkyD7gHRuiWGsnL3Z9B/ulJGXTsipAcg7/gpk1S0mkLjefPZfekR+cRIyheeTNmqLqc/eOAojkSUubQcJ7SDAqmBqnioBCmAY8BmAvxWOkEA/MB25YlxKrbn1pt3oHAelE7NDQlYRprtNEpW8GSGxD6E2KNNy8uXUYDdLLzo9VqEB+bd/3S5pK/Mx+AzqYPTRz05o9bgAra+r/QDOBNjIBKg5gOCnIFT9SsAQsMMQFKB9QLol4MjBTpGXTspnMGUFEq9ACdxsAjM2GCabj86clN5DGDKmbVICGG/cdvI3RXVLjM8DAZyGMPCmQQW0GatYDSD9VWh/V3Z5F6Q0eNWtnWh6huSBr+2TnMtCchEGn02hWqjggO4lfOOLeyUwa4PcfvNO9AAD2uqyPB7c1yrFVVXy5+eOsTJoovzul/fLhORi4bY3y58jwJe/JQDg3TneGyMACkArjMw/bm6Rt3JTtWGWffPxfoyx7bLqylLhWPtrTHm/Qtf16iMDiLl6CVxUIHFojXkz7sORAA43CAUvSRMhCFgJAlaQgO02IfLZAGKfE19lSxfqey86uT6Nb17/zANH4dUBeevxfiS5Ae3+gguulp9gHmCHx+aIYfLt2/bK7EX58tS3uLlyAhPhcenY2ooqwOGHCrDg47KpAMqfCiBwnXDR67AZYgiwEUpFEoQCmAQRQx6bCSYjDhR/OXNC994ou1e0KenT+HsDjcfV8BRIwE2qdWOEKuDTIfeESENBFbBiBxLidjX2Btwuj85pNfsO9OB6R8J1nrHNbS6OvO+i07wd7W4gaYMUVNba+Gf2x7/R3sGa9l3TLukrC7VHWbelUibMz9ckaPt+dn/WbP33CdAkCAJsCIyVQd0T5LY4KgHKYGDOFrMZ7FP2LwE0Bwx2ZLy5JYE9eL+sR3cYmFOk4zF3iOxvAxAKICCJuQB5wJZExLyGghJAlSABVqOn3wNp2+xuzSY5ErH8qgoQcJX55KltWnJf0a0wNmH2M39CR7hiQ0g2FZfLoQOdkphdjCaOBGD4Yfur8vdLoC2DMS4BshE6jwCAVwJ0IOLWGOYC9P5eYOYms/jykPz0vw+DddsCWxJ6KVN4r18+VgASUA5ZftyzQi/JVgOGAo4IBT8fqBK6mTRNHBIoN0dIrgVmSWBPcO/t18r4eVcjAedrf/9bvGf/HWEAB7AB40br+LlXyelv7Ne9Bu4AsTLFcXbRDZyIEui3wfA8x3038oMAboqmgoBUEKDDkG6N666QNRAxe4vJXONIQCigPLq52258cDdm7ZZqKIEk1PNx+bnEZa3nxlSAhAgSuPMzFc2R9gjL2r0JaXVm3/6tABepgD68HpS7/x1d3pxNUOLV5tTQNvkQCdHOBUfRFB2TJ+45InNyi8yFl2wy999xLfLAca0CgYu2wLuVHkZ31/76PYCtAn9DQHrlu4Eo5AASEEwNnYMKzsWkl+NoH47oeIwBicNQ5tqQPHvfYXkXJNhw4CRIEvpACub/TVWqBO4TJvJxFUpioibEyFCgAnDE9DcxvcFcVdasSnr1USttksDentNgSTVG2qkbTHRqvvnU9dt1k4X7fXd8fo/MWFhkAnO3oFXPN9+BQrgdd+aBXswGJWbi/FIvLrOKWZ7ALXjN/GrAZUkI9wFRqYXDwTT0Aam6KwzwFQiFKi8ac0F0hh2OpmRUgoQCL2ttyJAExq0NB0vC20/26ZyQtxEkzC3lFrn+akN7g2WIee0LoIC8HpTJbewYzYVpTaapCzP8z4YQXvD8U30A0o8E2K/7iky0t9ywQ6ZlF6AP2WAO7GvX0nhlEdQ2azPAoGrNKzBfuWW3KvM9dKuDR1GiZ20ysfqMk15WEiKT4F8RgBAgAWyEggwBkpAKAij/jCokjWprukfIPYECAxKghENYcEROwGT49hMfH3nx+0dk2QYsUElAh6j5AKWRJLjKQCL45DgBc8DM5c3m4MEeuePWa+XLt1wjN12/Q27+xE55EfPH66c/PsI9xON9ADV1o5mXVyrvv3DcboXPLRLUcKig0LBJ+h16A6qGZXrhx8rQELEiVOpeBpNfBAEwJYC4OAGDgJRCNEIgAKOvVUEZjiBBCaiB1arZL1dBCUVeNpTwHEl4sn/kZZcTmBt+88TAyJkHjkjulZW+EuzjMiVhbFDScMjbimTY6o1Pq/cmp9ebSak15oL55SYwK1+bLqhshA3ObZ9GOURpnppTaI73d0vu+ioMPSVIdiSgyDS0NoMAbtDY8snmafylm00wpRQq4JNuZn67fvW+OhXY+EOwzHISUIQQQA4IEwDwTgXc9gZ4MKY7KWQPicSSkHNZOcLhyAjlRyVwSOEimNS4J7dYSSjRcLC/IeCDU84JGg6aEzQ3uF+ScZpMwGfHzQt5n79xhw0H1P8vg4xA0nozeUG+ybuqXOt+YnaplrwJyaUm52MV3BDV8ZyO4LyyZ3ebBGYwFMp0g8eC5tpJgIb1XxGQGhqNSinzgikhWLkXVAKQB9KrztmY0Q7KEsC4yqxGmSz2si8r10ntvHDA8Td4/fz9h2XRFfDSJS4c0B8wJyS6Eqk5AUOTGs6TUBn4+54L5pV7N53argSwRN4Nj1bU1Mp9X92nDRG34wh6PMCThIkLCs23UTa1WUMVYQ/x1hODcmVhDdS0GaHAjR7uc/AZYo1TNglgCCgBhcNRC0pHoxYQfMk5kHAuTEBa5TlVgTIHJVgpsYtyJBSa7HVlEYnRljNVAhbE3eEl66tlcmq1/nbHTo1MjF0wC94myK3etOWWAJbTTyPrM7NrkoXxWmyR6ek/PTsED3MU5/gLNc4p8jrRBnNnSu+Nz7NdfgH3zlxTaibML8Saud3PymaV4MIABISGA5OTfQJK4fkyL4oEUAUMAZAQVCVQBQwDjJThksLpiuFQ6GWvC5mnv8vEOICeHX09+nY+yuaewhdvgoTnskdosD+pURV0mURNjPS8JkgzdWmrGZdc7W0MNcqvIOfXYATDVpkK4y40O1Bu0Az19aD1LcUaqr3JKRXezMWl5pnvHhp54wf9Nh+hxf79M8fkkbsOSGxakQnyeQdA28oG78NwbpPgZCogZYwAazYMCH6MAIYB6qg1ra0kgHU3ELXey9tQigblgHz/jn2Y7q6FXSNPfnO/HD7A8XmTGZ9coc/sOTpDAUpAIghIXIpzPi/IrDdTF1diwDmk9Z4E2u3xfvn6F/bKLnh9zZZamZlbaaLTK/U5ha31NZqT9u5pk99DBdyzpFpYFSrqG2ViciFAlzvw/C6VgDyQWclfiZ1VApAALQEaBswFJIAqsOCjNQ+MhYLNB9VITGVe1rpy09TWZGoba6Szq146OuvC1glrba+X5vZGLL4ensDgxN/vLKEKOq0SkBwZHnwatHtPp/wfJE5vP/Pdw3L44FbJubwaYy4fgYfMhQvoOfeYbiEmPc776D6jUiu9hMwS8zgc8OHPjsmP7z0sqzchCaOBi+FuNxMfZU/PkwQloGo0mB4RApOTSQCMBPgKwIWVBCWi2hJB8DgGUS2iUovN9756rTYoLFns1qzZmOWRYcEHmOzULl5eJdGoyQm5rV4CgdNy+YsSJMmFVYYPU995alCOHu6WWblliPNSMxHlkT/K1MfxCCE+mo9b1IL3mgG+yYtbCMup80CQV1zTKF/81C6ZuRiEXczYr4CzmPTss07mAFvdlBQQoCFQgBAoAQEhzyZCKoAkkABnYQJqcaRVK+tTMooR+wflg+ePqddYj63Bi+HzQfkDCPjtk0OStrbWcOucvyxJWNJJQ0OE2F9QZ2pa2iH/g7L0KozZc0rN5DRutwE0/j1+cRuMxxYvjraoFSS0milhArjzW2smpZQZbtJOxFGB254fYF3i8wlgqc+o8BUAAhaUaAgoAZC1VoKUMlQDmwzDSrAqwIUQFiQBZbOktkl27WqX7u1t0t3TCuMRxtfb8RrHnbs7pbG9XRJz0JnB2/FUwJIOGn9j5EVnNZoNoTZzcV4tmqEq3c/jD6v4rDA+lz+yguFzcYtbPUsGpkmogAT4JPC6sVCX5idbrdTGsr5LgphtlIDMMAGuCiSXnCMB56nA9QRjoWAJiOaFQQL77cClYH0OJYcB5eJiyJbnpfqLEWshGDq8eVUWPIERCIHldigYtsxBkEAi+JMb9bb/72o8b1Xvxy8ieHh/IQig9xW8s+xGVKkGeJ0DkJ0AbfnGmjX+YRoCSIqqgFIl4KxWAeQAkAACSowSkVqKacsPAacCJLFoZdK2x5btBnvEDe34SeOWVBPilFvTTfSULjiOi19MT7bj6APEEYQkKMg2EOOb/Yz7jjVKH0dcyzsPfHaTF0vwPgFZuiYt3UoAnQZn6ZDnkmBECOSfjUpFCKQUAzgIIBFUQWoIBFAFYwTYZEj5szLYchgDtmnKejaA0rgoBexiFQlLPaYAaATnvItcwKN9jyB9wD4B+L67ztj16H1eE4Z7OfBwAsHXUwEErypV0/XCcVQASqiWRRKQFkIZTC54E+AdAVSBJSCK8gcBenQhYI8kgmzyonZOCJMACetCYEpCjr9IxisXTRKYxGgOLD2t3uZrSN+9P2WhAsXnHHm0nGa9LiqAEq2ERxAQo7JvoGMIHG28TdgADSP4KsPqxQ1gEoDjm4Go+QWnkcxGJ88vtiGgFpkQYQ54ZEL0k2KMKsESEMNwgBdisihFJQIL4wKdVBWEA6IyJiEKnOf6muUt7F1KXN8HGUpgc/h6aryH3suB1jVYp7Bk2/U56avjaFQ0Bj82QmmljwWi5uUPwMtMghHgrRKUAJrtC1AVHPhUVcO5oCZF3oxG1nURSoAjwR79BdNbUEVsdjO9x3P1dKx6m96ltahn1fh5gsb7sUoEv+tfLwK8xrzKPhI8PM71qfxJgpU/egAqICarBgSEBgPR8/Ozo5KL0AcUi18Kx6wUlcHlgciK4BOh8uLN0BixP4AHYLhh/bnoTAv+bwjAMSbLvdb3AI6gSYyeKzkwPed7/JyJofF7Cppyd+A1CSsBiHk6QZMeCbDrgpNUrYj/YFq5GqrACCbJEf0PE/ybNK/gbiQ89AJFSHwwJQJVQAkgETYXWHMk4AZaFZBhg7hpEDe3BOCYoSTwdZgEAFDgzqwCwqag3XHsXL9D43f88NIYV9B65D3pfb03ve8cogSoWhn/fOQP8PA+Eh++Uz0aTC25W8Hzb1Jy4QKo4ANNhiRBzQHHcXIyCXC2IIIEqwIQwNJYp6ZEKBkNuii3cPwbvEajXNWD9CjzRJgMSNq+F35/7DXANoaJZfUJk+3uq8Zyp06h/EkC6z4zPoATPE2TX9mHsRmhFAff/k2al98alQoVJJeMKAF+NYhQAMPAHl0YMC8gwQSpAg0DayBAF2Q9Y4nwzXnPVYwIgD5w9/4YeCXMed0ngN5XApzxV+kwAMd64GXGOr1us77vfX0Gqt4vbnOwz/+bPK/wcFRqxSiaIKcEJkOCZ1MUEQqaFH0SYLhRlN6M8UbmKUVnlKUfFm7RGq++fC1IArLA/JDh+1bmNPudjDrklghSSTTqvXobca+xzgRNArAuzfgEz9jn888MTICpxb0O7t//CyYXdQDw+8F0EIGQmMzKkILukJ2hGhokZ25WUMaDyjg9QBWACM0LBG//z4D1nPOahgg9F6kKHn1TIngeJsYBtkc13+v6M3msw8Y8S56uhfWeZS8D5Q4ZP5hW9n4wpaTDwfzHfxNTtmSAhDvZHCkRYI8M0qLSQjCECt4P/1tGtZUWGcZ5MLMWN60bDWbVw+pwztf1sAZ39M/91w2jUIE7NuLY6I7+e/YYzOT1+Hn/mrhHJsDBosNm16Hn+KxTwJ0xwOTg/fN//D+FwQVFfWiRHwQZr4MUzA0l1tJKhyfDoIrhKMzV1sqtZVTCqmDVw8FMGM5BDM6rzmKxONJqh+FBNb72j3zfGs/5HR75veqzURk1Y9eE2XvA0nG/9LKzAHsWSe4sAL8OJz0EhfYhAWY5OH/nLxD4f6tfkTUeFvokAAAAAElFTkSuQmCC" alt="">
+    </div>
+    <div class="brand-title">光影智编</div>
+  </div>
+  <div class="menu-root" data-menu="file">
+    <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">文件<span class="menu-key">(F)</span></button>
+    <div class="menu-list" role="menu" hidden>
+      <button class="menu-item" type="button" role="menuitem" data-action="new">新建<span class="menu-shortcut">Ctrl+N</span></button>
+      <button class="menu-item" type="button" role="menuitem" data-action="open">打开<span class="menu-shortcut">Ctrl+O</span></button>
+      <button class="menu-item" type="button" role="menuitem" data-action="save">保存<span class="menu-shortcut">Ctrl+S</span></button>
+    </div>
+  </div>
+  <div class="menu-root" data-menu="view">
+    <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">查看<span class="menu-key">(V)</span></button>
+    <div class="menu-list" role="menu" hidden>
+      <button class="menu-item" type="button" role="menuitem" data-action="log">日志<span class="menu-state" id="logMenuState">显示中</span></button>
+      <button class="menu-item" type="button" role="menuitem" data-action="settings">设置</button>
+    </div>
+  </div>
+  <div class="menu-root" data-menu="run">
+    <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">运行<span class="menu-key">(R)</span></button>
+    <div class="menu-list" role="menu" hidden>
+      <button class="menu-item" id="runMenuItem" type="button" role="menuitem" data-action="run">运行</button>
+      <button class="menu-item" id="stopMenuItem" type="button" role="menuitem" data-action="stop">停止</button>
+    </div>
+  </div>
+  <div class="menu-root" data-menu="help">
+    <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">帮助<span class="menu-key">(H)</span></button>
+    <div class="menu-list" role="menu" hidden>
+      <button class="menu-item" type="button" role="menuitem" data-action="about">关于光影智编</button>
+    </div>
+  </div>
+</nav>
+
+<main class="app">
+  <section class="panel toolbox-panel">
+    <div class="panel-head toolbox-head">
+      <span class="panel-title">积木</span>
+    </div>
+    <div class="toolbox-list" id="toolboxList"></div>
+  </section>
+
+  <div class="splitter split-fixed" role="presentation" aria-hidden="true"></div>
+
+  <section class="panel editor-panel">
+    <div class="panel-head">
+      <span class="panel-title">积木编辑区</span>
+      <div class="panel-actions">
+        <button class="btn stop" id="stopBtn" type="button">停止</button>
+        <button class="btn run" id="runBtn" type="button">运行</button>
+      </div>
+    </div>
+    <div class="workspace-wrap">
+      <div id="blocklyDiv"></div>
+    </div>
+  </section>
+
+  <div class="splitter split-v" id="codeSplitter" role="separator" aria-orientation="vertical" aria-label="调整代码区宽度" title="拖动调整代码区宽度，双击恢复默认"></div>
+
+  <aside class="panel code-panel">
+    <div class="panel-head">
+      <div class="code-head">
+        <span class="panel-title">代码预览</span>
+        <span class="lang">MicroPython</span>
+      </div>
+    </div>
+    <div class="code-body">
+      <pre id="codeText"></pre>
+    </div>
+  </aside>
+
+  <div class="splitter split-h" id="logSplitter" role="separator" aria-orientation="horizontal" aria-label="调整运行日志高度" title="拖动调整日志高度，双击恢复默认"></div>
+
+  <section class="panel log-panel" id="logPanel">
+    <div class="panel-head">
+      <span class="panel-title">运行日志</span>
+      <div class="log-tools">
+        <span class="log-status" id="logStatus" role="status" aria-label="USB 串口 · 未连接">
+          <span class="log-status-text" id="logStatusText">USB 串口</span>
+          <span class="log-status-dot" id="logStatusDot" aria-hidden="true"></span>
+        </span>
+        <button class="log-close" id="logCloseBtn" type="button" title="关闭运行日志" aria-label="关闭运行日志">×</button>
+      </div>
+    </div>
+    <div class="log-list" id="logList" aria-live="polite"></div>
+  </section>
+</main>
+
+<div class="modal-mask" id="settingsMask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="settingsTitle">通信设置</h2>
+        <p>选择机器人的连接方式，参数要和机器人里的设置一致。</p>
+      </div>
+      <button class="icon-btn" id="settingsClose" type="button" aria-label="关闭设置">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="segmented" id="modeTabs" role="tablist" aria-label="通信模式">
+        <button type="button" data-mode="serial" role="tab">USB 串口</button>
+        <button type="button" data-mode="sta" role="tab">WiFi STA</button>
+        <button type="button" data-mode="ap" role="tab">WiFi AP</button>
+      </div>
+
+      <div class="mode-pane" data-pane="serial">
+        <div class="field-grid">
+          <div class="field">
+            <label for="baudRate">波特率</label>
+            <select id="baudRate">
+              <option value="9600">9600</option>
+              <option value="57600">57600</option>
+              <option value="115200">115200</option>
+              <option value="230400">230400</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint" id="serialHint">点「连接」后，浏览器会让你选择串口。机器人会重启一次，等两秒就好。</p>
+      </div>
+
+      <div class="mode-pane" data-pane="sta" hidden>
+        <div class="field-grid">
+          <div class="field">
+            <label for="staIp">设备 IP</label>
+            <input id="staIp" type="text" inputmode="decimal" placeholder="192.168.1.50" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="staPort">端口</label>
+            <input id="staPort" type="number" min="1" max="65535" step="1" value="8080">
+          </div>
+          <div class="field">
+            <label for="staSsid">WiFi 名称（参考）</label>
+            <input id="staSsid" type="text" placeholder="YOUR_WIFI_SSID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="staPassword">WiFi 密码（参考）</label>
+            <input id="staPassword" type="password" placeholder="与固件常量一致" autocomplete="off">
+          </div>
+        </div>
+        <p class="hint">电脑和机器人要连在同一个 WiFi 下。名称和密码只保存在本机，用来核对设置。</p>
+      </div>
+
+      <div class="mode-pane" data-pane="ap" hidden>
+        <div class="field-grid">
+          <div class="field">
+            <label for="apIp">设备 IP</label>
+            <input id="apIp" type="text" inputmode="decimal" value="192.168.4.1" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="apPort">端口</label>
+            <input id="apPort" type="number" min="1" max="65535" step="1" value="8080">
+          </div>
+          <div class="field">
+            <label for="apSsid">热点名称（参考）</label>
+            <input id="apSsid" type="text" value="PuppetRobot" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="apPassword">热点密码（参考）</label>
+            <input id="apPassword" type="password" value="12345678" autocomplete="off">
+          </div>
+        </div>
+        <p class="hint">先让电脑连上机器人发出的热点，再用上面的地址连接。</p>
+      </div>
+
+      <div class="modal-state">
+        <span class="dot" id="modalDot"></span>
+        <span id="modalStatus">未连接</span>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <span class="hint-inline" id="modalHint">连接结果会显示在下面的日志里</span>
+      <button class="btn ghost" id="disconnectBtn" type="button">断开</button>
+      <button class="btn primary" id="connectBtn" type="button">连接</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="projectFileInput" accept=".xml,application/xml,text/xml" hidden>
+
+<div class="modal-mask" id="saveMask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="saveTitle">保存积木工程</h2>
+        <p>把这次的积木存下来，下次用「文件 → 打开」继续编辑。</p>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="field">
+        <label for="saveName">文件名</label>
+        <input id="saveName" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="hint" id="saveHint">保存位置：文档\PuppetCode</p>
+      <p class="hint warn" id="saveError" hidden></p>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn ghost" id="saveCancelBtn" type="button">取消</button>
+      <button class="btn ghost" id="saveSkipBtn" type="button">不保存</button>
+      <button class="btn primary" id="saveSaveBtn" type="button">保存并退出</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="aboutMask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="aboutTitle">光影智编</h2>
+        <p>积木式机器人编程工具</p>
+      </div>
+      <button class="icon-btn" id="aboutClose" type="button" aria-label="关闭">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="hint">把积木拖进编辑区，右侧会实时生成 MicroPython 代码；连接机器人后点「运行」即可下发执行。</p>
+      <p class="hint">支持 USB 串口、WiFi STA、WiFi AP 三种连接方式，可在「设置」里切换。</p>
+      <p class="hint">积木工程保存在「文档\PuppetCode」，也可以用「文件 → 打开」载入已有的 .xml 工程。</p>
+      <p class="hint">版本 1.0.0</p>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn primary" id="aboutOk" type="button">知道了</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
