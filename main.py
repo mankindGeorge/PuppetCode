@@ -63,6 +63,10 @@ SERVO_MAX_ANGLE = 180
 # 停止指令的最长等待时间：超时后软复位恢复待机
 STOP_TIMEOUT_MS = 3000
 
+# 单条报文上限：超出后整条丢弃并回传 error，避免静默丢包导致前端卡在运行中
+MAX_SERIAL_LINE_BYTES = 256 * 1024   # 串口单行（NDJSON）
+MAX_WS_MESSAGE_BYTES = 512 * 1024    # WebSocket 单条消息
+
 # WebSocket 握手固定字符串（RFC 6455）
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -418,6 +422,7 @@ def _handle_stop():
 def _serial_reader():
     """串口读取线程：按换行符切分 JSON 报文。"""
     buffer = ""
+    discarded = False
     while True:
         try:
             char = _stdin.read(1)
@@ -437,11 +442,20 @@ def _serial_reader():
         if char == "\n":
             line = buffer
             buffer = ""
+            if discarded:
+                # 超限行剩余部分一直丢弃到换行，避免误解析半截报文
+                discarded = False
+                continue
             _handle_line(line)
-        else:
+        elif not discarded:
             buffer += char
-            if len(buffer) > 262144:
+            if len(buffer) > MAX_SERIAL_LINE_BYTES:
                 buffer = ""
+                discarded = True
+                _send({
+                    "type": "error",
+                    "message": "单条指令超过 256 KB 上限，已丢弃，请精简代码后重试",
+                })
 
 
 def _run_serial():
@@ -586,6 +600,7 @@ def _ws_session(client):
     _send_ready()
 
     fragments = b""
+    dropping = False
     while True:
         fin, opcode, payload = _ws_read_frame(client)
 
@@ -603,9 +618,19 @@ def _ws_session(client):
         elif opcode == 0xA:        # pong
             continue
         elif opcode == 0x1 or opcode == 0x0:
+            if dropping:
+                # 超限消息剩余分片丢弃到 fin，再恢复接收
+                if fin:
+                    dropping = False
+                continue
             fragments += payload
-            if len(fragments) > 524288:
+            if len(fragments) > MAX_WS_MESSAGE_BYTES:
                 fragments = b""
+                dropping = not fin
+                _send({
+                    "type": "error",
+                    "message": "单条消息超过 512 KB 上限，已丢弃，请精简代码后重试",
+                })
                 continue
             if fin:
                 try:

@@ -33,9 +33,10 @@ src/
   workspace/          index.js 工作区注入、toolboxPanel.js 左侧分类按钮、sprites.js + sprite-data.js 内联补丁
   transport/          base.js 抽象、serial.js 串口、websocket.js WiFi、index.js 工厂
   protocol/           messages.js 设备报文分发（ready/ack/log/done/error）
-  connection/         index.js 连接/运行/停止控制、probe.js 就绪握手探测
-  ui/                 log.js 日志、status.js 状态与按钮、settings.js 设置弹窗、toolbar.js 顶部栏、
-                      layout.js 分栏拖拽、codeZoom.js 代码字号缩放、menu.js 顶部菜单
+  connection/         index.js 连接/运行/停止控制、probe.js 就绪握手探测、
+                      watchdog.js 运行/停止回执超时兜底
+  ui/                 log.js 日志、status.js 状态与按钮、settings.js 设置弹窗、modal.js 模态栈、
+                      toolbar.js 顶部栏、layout.js 分栏拖拽、codeZoom.js 代码字号缩放、menu.js 顶部菜单
   project/            index.js 新建/打开/保存/退出提示（桌面写「文档\PuppetCode」，浏览器下载 .xml）
   assets/             页面装饰图（decor/）与工具箱分类图标（toolbox/*.svg，按 ?raw 内联）
   styles/             按区域拆分的 CSS，responsive.css 为窄屏适配
@@ -53,6 +54,7 @@ api-doc.md            接口协议、积木映射、扩展步骤、已知限制
 ## 工程文件与桌面桥
 
 - 工程为 Blockly XML（`.xml`），新建 / 打开 / 保存 / 退出提示集中在 `src/project/index.js`。
+- 打开工程必须先严格校验（parsererror、根节点、积木类型、离屏工作区试载），通过后才清空画布；加载失败回滚到导入前快照，失败路径不得清空撤销栈。`Blockly.utils.xml.textToDom` 解析失败会退化为 HTML 解析，不能用来判断文件是否合法。
 - 桌面版经 `preload.js` 暴露的 `window.PuppetCodeBridge`（`nextFileName / saveProject / onCloseRequest / closeConfirmed`）落盘，统一写入「文档\PuppetCode」；主进程拒绝覆盖同名文件。
 - 无 `PuppetCodeBridge` 时（浏览器 / 开发服务器）退化为下载文件 + `beforeunload` 提示，编号存于 `localStorage` 的 `puppetcode.savedSeq`。
 - 退出流程：主进程拦截 `close` → 发 `app:request-close` → 页面弹保存框 → 保存或放弃后调 `app:close-confirmed` 才真正关闭。改动此处需同时改 `project/index.js`、`preload.js`、`electron/main.js`。
@@ -102,8 +104,9 @@ api-doc.md            接口协议、积木映射、扩展步骤、已知限制
 
 - `src/vendor/blockly/*.js` 是官方 UMD 产物，文件顶部有 ES 模块垫片（`var define, module, exports;`）。缺少垫片时 Vite 构建会误走 CommonJS 分支，导致 `window.Blockly` 为空。
 - 单文件构建需保留 sprites 内联补丁（`workspace/sprites.js`），否则菜单复选框、垃圾桶图标会请求外部 `sprites.png`。
-- 用户代码中裸 `except Exception` 会吞掉停止用的 `_StopRequested`，只能等待 `STOP_TIMEOUT_MS`（3 秒）后软复位；软件复位后前端收不到状态更新。
+- 用户代码中裸 `except Exception` 会吞掉停止用的 `_StopRequested`，只能等待 `STOP_TIMEOUT_MS`（3 秒）后软复位；软件复位后设备不会回 `done`，运行按钮由 `watchdog.js` 在停止后 8 秒兜底恢复。
 - WiFi WebSocket 为单客户端，异常断开可能残留死连接；同时仅成功连接时才会回 `ready`，前端 `probe.js` 只做超时提示。
+- 运行 / 停止回执由 `connection/watchdog.js` 兜底：运行后 10 秒无 `ack started`、停止后 8 秒无 `done` 会自动恢复按钮并提示。固件对超限报文（串口单行 256 KB / WebSocket 单条 512 KB）回传 `error`，不再静默丢弃；修改这两个上限需同步 `main.py` 顶部常量与 `api-doc.md`。
 - 串口非 JSON 行会作为「设备日志」展示，设备启动打印内容同理，属于预期行为。
 - Electron 主进程启用 `contextIsolation` + `sandbox`，不要为图方便关闭；页面禁止自行打开新窗口。
 - 左侧分类按钮由 `workspace/toolboxPanel.js` 自绘，图标按分类名映射 `CATEGORY_ICONS`；分类改名或调整顺序时需同步，否则按钮只剩文字。

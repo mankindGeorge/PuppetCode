@@ -8,6 +8,7 @@ import { addLog } from '../ui/log.js';
 import { readSettingsUI, openSettings, syncSettingsUI } from '../ui/settings.js';
 import { setModalStatus, updateConnUI, updateRunButtons } from '../ui/status.js';
 import { startReadyProbe, stopReadyProbe } from './probe.js';
+import { armStartWatchdog, armStopWatchdog, clearRunWatchdogs } from './watchdog.js';
 
 function bindTransport(transport) {
   transport.onMessage(handleDeviceMessage);
@@ -27,6 +28,7 @@ function handleTransportStatus(state, detail) {
     conn.connecting = false;
     conn.running = false;
     conn.deviceReady = false;
+    clearRunWatchdogs();
     stopReadyProbe();
     if (wasConnected || detail) {
       addLog('warn', detail ? '连接已断开：' + detail : '连接已断开');
@@ -110,6 +112,7 @@ export async function disconnectDevice(reason) {
   conn.connected = false;
   conn.running = false;
   conn.deviceReady = false;
+  clearRunWatchdogs();
   stopReadyProbe();
 
   if (transport) {
@@ -146,6 +149,11 @@ export async function runCode() {
   }
 
   runtime.currentExecId = 'run-' + Date.now();
+  conn.running = true;
+  updateRunButtons();
+  // 先计时：下发本身卡住（如串口写入阻塞）时也能兜底恢复。
+  armStartWatchdog(runtime.currentExecId);
+
   try {
     await conn.transport.send({
       type: 'run',
@@ -153,9 +161,12 @@ export async function runCode() {
       code: output.runCode
     });
     addLog('tx', '已下发代码（' + output.lines + ' 行 / ' + output.runCode.length + ' 字符）');
-    conn.running = true;
-    updateRunButtons();
+    // 下发完成后重新计时，等待设备回执。
+    armStartWatchdog(runtime.currentExecId);
   } catch (error) {
+    clearRunWatchdogs();
+    conn.running = false;
+    updateRunButtons();
     addLog('error', '代码下发失败：' + (error && error.message ? error.message : error));
   }
 }
@@ -165,6 +176,8 @@ export async function stopCode() {
     addLog('warn', '未连接设备，无法发送停止指令');
     return;
   }
+  // 先计时：停止指令发送失败或卡住时，同样不能永久停在运行中。
+  armStopWatchdog();
   try {
     await conn.transport.send({ type: 'stop' });
     addLog('tx', '已发送停止指令');

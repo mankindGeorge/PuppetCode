@@ -1,5 +1,6 @@
 // 通信设置弹窗：读取/保存表单、模式切换面板、打开与关闭。
 import { settings, saveSettings } from '../state.js';
+import { openModal, closeModal } from './modal.js';
 
 export function readSettingsUI() {
   settings.baudRate = parseInt(document.getElementById('baudRate').value, 10) || 115200;
@@ -46,31 +47,25 @@ export function syncSettingsUI() {
 
 export function openSettings() {
   syncSettingsUI();
-  document.getElementById('settingsMask').hidden = false;
-  // 弹窗打开时让编辑区彻底失活，避免点击或键盘操作穿透到 Blockly
-  document.querySelector('.app').inert = true;
-  document.getElementById('settingsClose').focus();
+  // 统一模态管理负责背景失活、Esc 与焦点，详情见 ui/modal.js
+  openModal(document.getElementById('settingsMask'), {
+    onClose: closeSettings,
+    initialFocus: document.getElementById('settingsClose')
+  });
 }
 
 export function closeSettings() {
   readSettingsUI();
   saveSettings();
-  document.getElementById('settingsMask').hidden = true;
-  document.querySelector('.app').inert = false;
+  closeModal(document.getElementById('settingsMask'));
 }
 
-// 弹窗自身的事件：关闭按钮、遮罩点击、Esc、输入变更自动保存。
+// 弹窗自身的事件：关闭按钮、遮罩点击、输入变更自动保存。Esc 由模态管理统一处理。
 export function bindSettingsPanel() {
   document.getElementById('settingsClose').addEventListener('click', closeSettings);
 
   document.getElementById('settingsMask').addEventListener('click', function (event) {
     if (event.target === this) closeSettings();
-  });
-
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && !document.getElementById('settingsMask').hidden) {
-      closeSettings();
-    }
   });
 
   document.querySelectorAll('.modal-body input, .modal-body select').forEach(function (input) {

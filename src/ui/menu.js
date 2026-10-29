@@ -4,6 +4,7 @@
 import { newProject, openProject, saveProjectPrompt } from '../project/index.js';
 import { showLog, toggleLog } from './layout.js';
 import { openSettings } from './settings.js';
+import { openModal, closeModal, isModalOpen } from './modal.js';
 import { runCode, stopCode } from '../connection/index.js';
 
 function closeMenus() {
@@ -58,9 +59,15 @@ function bindMenus() {
   });
 
   document.addEventListener('keydown', function (event) {
+    var key = event.key.toLowerCase();
+    var isFileShortcut = (event.ctrlKey || event.metaKey) && (key === 'n' || key === 'o' || key === 's');
+    // 弹窗打开时不执行应用动作，但仍要吞掉浏览器默认行为（如 Ctrl+S 保存网页）。
+    if (isModalOpen()) {
+      if (isFileShortcut) event.preventDefault();
+      return;
+    }
     if (event.key === 'Escape') closeMenus();
     if (!(event.ctrlKey || event.metaKey)) return;
-    var key = event.key.toLowerCase();
     if (key === 'n') {
       event.preventDefault();
       newProject();
@@ -76,12 +83,15 @@ function bindMenus() {
 
 function openAbout() {
   var mask = document.getElementById('aboutMask');
-  if (mask) mask.hidden = false;
+  if (!mask) return;
+  openModal(mask, {
+    onClose: closeAbout,
+    initialFocus: document.getElementById('aboutOk')
+  });
 }
 
 function closeAbout() {
-  var mask = document.getElementById('aboutMask');
-  if (mask) mask.hidden = true;
+  closeModal(document.getElementById('aboutMask'));
 }
 
 function bindAbout() {
@@ -93,9 +103,6 @@ function bindAbout() {
   });
   mask.addEventListener('click', function (event) {
     if (event.target === mask) closeAbout();
-  });
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && !mask.hidden) closeAbout();
   });
 }
 

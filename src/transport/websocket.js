@@ -6,7 +6,6 @@ export class WebSocketTransport extends Transport {
     super();
     this.ws = null;
     this.url = '';
-    this.manualClose = false;
   }
 
   connect(config) {
@@ -16,10 +15,19 @@ export class WebSocketTransport extends Transport {
     return new Promise(function (resolve, reject) {
       var settled = false;
       var ws = new WebSocket(url);
+      var timer = null;
       self.ws = ws;
       self.url = url;
 
-      var timer = setTimeout(function () {
+      // 不论成功、失败还是被 close，都只结算一次连接 Promise。
+      function fail(error) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      }
+
+      timer = setTimeout(function () {
         if (settled) return;
         settled = true;
         try { ws.close(); } catch (error) {}
@@ -36,22 +44,20 @@ export class WebSocketTransport extends Transport {
       };
 
       ws.onerror = function () {
-        if (settled) {
-          self.emitStatus('error', 'WebSocket 发生错误');
+        if (!settled) {
+          fail(new Error('无法连接 ' + url));
           return;
         }
-        settled = true;
-        clearTimeout(timer);
-        reject(new Error('无法连接 ' + url));
+        if (self._connected) self.emitStatus('error', 'WebSocket 发生错误');
       };
 
       ws.onclose = function () {
-        clearTimeout(timer);
+        // 浏览器只触发 close 而不触发 error 时，也要结算连接 Promise，避免永久挂起。
+        fail(new Error('连接已关闭'));
         var wasConnected = self._connected;
         self._connected = false;
         self.ws = null;
         if (wasConnected) self.emitStatus('disconnected', '连接已关闭');
-        self.manualClose = false;
       };
 
       ws.onmessage = function (event) {
@@ -83,7 +89,6 @@ export class WebSocketTransport extends Transport {
   }
 
   disconnect() {
-    this.manualClose = true;
     var wasConnected = this._connected;
     if (this.ws) {
       try { this.ws.close(); } catch (error) {}

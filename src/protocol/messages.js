@@ -3,6 +3,7 @@ import { conn, runtime } from '../state.js';
 import { addLog } from '../ui/log.js';
 import { updateConnUI, updateRunButtons } from '../ui/status.js';
 import { stopReadyProbe } from '../connection/probe.js';
+import { clearRunWatchdogs, noteExecutionStarted } from '../connection/watchdog.js';
 
 export function handleDeviceMessage(message) {
   if (!message || typeof message !== 'object') return;
@@ -23,7 +24,8 @@ export function handleDeviceMessage(message) {
       stopping: '设备正在停止'
     };
     addLog('rx', ackText[message.stage] || ('确认：' + message.stage));
-    if (message.stage === 'started') {
+    if (message.stage === 'started' && (!message.id || message.id === runtime.currentExecId)) {
+      noteExecutionStarted(message.id || runtime.currentExecId);
       conn.running = true;
       updateRunButtons();
     }
@@ -41,6 +43,9 @@ export function handleDeviceMessage(message) {
   }
 
   if (message.type === 'done') {
+    // 忽略上一次执行迟到的 done，避免误清新一轮运行的状态。
+    if (message.id && message.id !== runtime.currentExecId) return;
+    clearRunWatchdogs();
     conn.running = false;
     if (message.ok) {
       addLog('success', '执行结束');
@@ -56,6 +61,7 @@ export function handleDeviceMessage(message) {
   if (message.type === 'error') {
     addLog('error', message.message || '设备返回错误');
     if (!message.id || message.id === runtime.currentExecId) {
+      clearRunWatchdogs();
       conn.running = false;
       updateRunButtons();
     }

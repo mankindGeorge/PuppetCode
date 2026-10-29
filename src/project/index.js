@@ -8,6 +8,7 @@ import { Blockly } from '../vendor/index.js';
 import { runtime } from '../state.js';
 import { updatePreview } from '../codegen/preview.js';
 import { addLog } from '../ui/log.js';
+import { openModal, closeModal } from '../ui/modal.js';
 
 const EXT = '.xml';
 const SEQ_KEY = 'puppetcode.savedSeq';
@@ -139,15 +140,17 @@ async function openSavePrompt(mode) {
   document.getElementById('saveSkipBtn').hidden = promptMode !== 'exit';
   document.getElementById('saveSaveBtn').textContent = promptMode === 'exit' ? '保存并退出' : '保存';
   showSaveError('');
-  document.getElementById('saveMask').hidden = false;
+  openModal(document.getElementById('saveMask'), {
+    onClose: closePrompt,
+    initialFocus: input
+  });
 
-  input.focus();
   var dot = input.value.lastIndexOf('.');
   input.setSelectionRange(0, dot > 0 ? dot : input.value.length);
 }
 
 function closePrompt() {
-  document.getElementById('saveMask').hidden = true;
+  closeModal(document.getElementById('saveMask'));
 }
 
 function finishExit() {
@@ -168,9 +171,6 @@ function bindSavePrompt() {
     if (event.key === 'Enter') {
       event.preventDefault();
       document.getElementById('saveSaveBtn').click();
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      closePrompt();
     }
   });
 }
@@ -195,27 +195,91 @@ function bindExitGuard() {
   });
 }
 
+// Blockly.utils.xml.textToDom 解析失败时会退化为 HTML 解析，截断的 XML
+// （如 <xml><block）也能返回 <xml> 元素，因此这里自己做严格校验。
+function parseProjectXml(text) {
+  var doc;
+  try {
+    doc = new DOMParser().parseFromString(String(text || ''), 'text/xml');
+  } catch (error) {
+    throw new Error('XML 解析失败');
+  }
+  if (!doc || !doc.documentElement || doc.getElementsByTagName('parsererror').length > 0) {
+    throw new Error('XML 内容不完整或格式错误');
+  }
+  var root = doc.documentElement;
+  if (root.nodeName.toLowerCase() !== 'xml') {
+    throw new Error('根节点不是 <xml>');
+  }
+  return root;
+}
+
+// 先确认所有积木类型都可用，再在离屏工作区完整加载一遍，
+// 提前暴露连接、字段等结构错误，避免清空画布后才发现问题。
+function validateProjectXml(root) {
+  var nodes = root.getElementsByTagName('*');
+  for (var i = 0; i < nodes.length; i++) {
+    var nodeName = nodes[i].nodeName.toLowerCase();
+    if (nodeName !== 'block' && nodeName !== 'shadow') continue;
+    var type = nodes[i].getAttribute('type');
+    if (!type) throw new Error('存在未指定类型的积木');
+    if (!Blockly.Blocks[type]) {
+      throw new Error('未知积木类型：' + String(type).slice(0, 40));
+    }
+  }
+
+  var probe = new Blockly.Workspace();
+  try {
+    Blockly.Xml.domToWorkspace(root.cloneNode(true), probe);
+  } finally {
+    probe.dispose();
+  }
+}
+
 function importXml(text, fileName) {
   var workspace = runtime.workspace;
   if (!workspace) return;
 
+  var dom;
+  try {
+    dom = parseProjectXml(text);
+    validateProjectXml(dom);
+  } catch (error) {
+    addLog('error', '打开失败：' + fileName + ' 不是有效的积木工程文件'
+      + (error && error.message ? '（' + error.message + '）' : ''));
+    return;
+  }
+
   if (hasUnsavedChanges() && hasBlocks() && !window.confirm('打开会替换当前的积木，继续吗？')) return;
 
+  // 校验已通过，仍保留回滚兜底：加载中途出错时恢复导入前的快照。
+  var snapshot = workspaceXml();
+  var failure = null;
+
+  Blockly.Events.disable();
   try {
-    var dom = Blockly.utils.xml.textToDom(text);
-    if (!dom || dom.nodeName.toLowerCase() !== 'xml') {
-      throw new Error('root');
-    }
     Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, workspace);
-    Blockly.svgResize(workspace);
-    updatePreview();
-    baselineXml = workspaceXml();
-    addLog('success', '已打开：' + fileName);
   } catch (error) {
-    addLog('error', '打开失败：' + fileName + ' 不是有效的积木工程文件');
+    failure = error;
+    try {
+      Blockly.Xml.clearWorkspaceAndLoadFromXml(Blockly.utils.xml.textToDom(snapshot), workspace);
+    } catch (restoreError) {}
   } finally {
-    if (workspace.clearUndo) workspace.clearUndo();
+    Blockly.Events.enable();
   }
+
+  Blockly.svgResize(workspace);
+  updatePreview();
+
+  if (failure) {
+    addLog('error', '打开失败：' + fileName
+      + '（' + (failure && failure.message ? failure.message : failure) + '），已恢复原有积木');
+    return;
+  }
+
+  if (workspace.clearUndo) workspace.clearUndo();
+  baselineXml = workspaceXml();
+  addLog('success', '已打开：' + fileName);
 }
 
 function bindFileInput() {

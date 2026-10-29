@@ -1,6 +1,10 @@
 // USB 串口通信（Web Serial）：NDJSON 收发，按行切分报文。
 import { Transport } from './base.js';
 
+// 未换行数据的缓冲上限。正常报文远小于此值；波特率不匹配或设备持续输出
+// 乱码时，超限片段直接丢弃，避免缓冲无限增长耗尽内存。
+const MAX_BUFFER_CHARS = 64 * 1024;
+
 export class SerialTransport extends Transport {
   constructor() {
     super();
@@ -10,6 +14,7 @@ export class SerialTransport extends Transport {
     this.readLoop = null;
     this.buffer = '';
     this.closing = false;
+    this.dropWarned = false;
   }
 
   describePort(port) {
@@ -42,26 +47,65 @@ export class SerialTransport extends Transport {
   startReadLoop() {
     var self = this;
     var decoder = new TextDecoder();
-    this.reader = this.port.readable.getReader();
+    var reader = this.port.readable.getReader();
+    this.reader = reader;
 
     this.readLoop = (async function () {
       try {
         while (true) {
-          var result = await self.reader.read();
+          var result = await reader.read();
           if (result.done) break;
           self.buffer += decoder.decode(result.value, { stream: true });
           self.flushLines();
+          // 完整行都消费完说明回到了行边界，允许下次溢出重新告警。
+          if (!self.buffer) self.dropWarned = false;
+          if (self.buffer.length > MAX_BUFFER_CHARS) {
+            self.buffer = '';
+            decoder = new TextDecoder();
+            self.warnBufferOverflow();
+          }
         }
       } catch (error) {
         if (!self.closing) {
-          self._connected = false;
           self.emitStatus('error', '串口读取失败：' + (error && error.message ? error.message : error));
-          self.emitStatus('disconnected', '');
         }
       } finally {
-        try { self.reader.releaseLock(); } catch (error) {}
+        try { reader.releaseLock(); } catch (error) {}
+        if (self.reader === reader) self.reader = null;
+        // 流正常结束（done）或读取报错都会走到这里。只要不是主动断开，
+        // 就按断连处理并释放端口，否则界面会一直显示“已连接”，重连也会卡在旧端口上。
+        if (!self.closing) {
+          self.buffer = '';
+          self.dropWarned = false;
+          self._connected = false;
+          self.teardownPort();
+          self.emitStatus('disconnected', '串口数据流已结束');
+        }
       }
     })();
+  }
+
+  warnBufferOverflow() {
+    if (this.dropWarned) return;
+    this.dropWarned = true;
+    this.emitMessage({
+      type: 'log',
+      level: 'warn',
+      message: '串口收到超过 64KB 的无换行数据，已丢弃这段内容；请检查波特率是否与设备一致'
+    });
+  }
+
+  // 非主动断开时尽力释放端口，保证下次「连接」可以重新打开。
+  teardownPort() {
+    if (this.writer) {
+      try { this.writer.releaseLock(); } catch (error) {}
+      this.writer = null;
+    }
+    if (this.port) {
+      var port = this.port;
+      this.port = null;
+      try { port.close().catch(function () {}); } catch (error) {}
+    }
   }
 
   flushLines() {
@@ -108,6 +152,7 @@ export class SerialTransport extends Transport {
       }
       self.reader = null;
       self.buffer = '';
+      self.dropWarned = false;
       if (self.port) {
         return self.port.close().catch(function () {}).then(function () {
           self.port = null;
