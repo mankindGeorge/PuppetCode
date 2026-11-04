@@ -1,4 +1,5 @@
 // 运行日志区渲染：统一时间戳、类型徽标与滚动到底部。
+import { showLog } from './layout.js';
 
 var LOG_META = {
   info: { tag: '系统', cls: 'info' },
@@ -46,4 +47,15 @@ export function addLog(level, message) {
     list.removeChild(list.firstChild);
   }
   list.scrollTop = list.scrollHeight;
+
+  // 收起状态下由消息条呈现最后一条消息。
+  var latest = document.getElementById('logLatest');
+  if (latest) {
+    latest.textContent = String(message);
+    latest.title = String(message);
+    latest.className = 'log-latest ' + meta.cls;
+  }
+
+  // 出错时自动展开，避免孩子错过关键提示。
+  if (level === 'error') showLog();
 }

@@ -20,6 +20,8 @@ import './vendor/index.js';
 import { defineCustomBlocks } from './blocks/definitions.js';
 import { setupGenerator } from './codegen/python.js';
 import { initWorkspace } from './workspace/index.js';
+import { initStage } from './workspace/stage.js';
+import { initCanvasTools } from './workspace/canvasTools.js';
 import { initToolboxPanel } from './workspace/toolboxPanel.js';
 import { addLog } from './ui/log.js';
 import { syncSettingsUI, bindSettingsPanel } from './ui/settings.js';
@@ -38,6 +40,8 @@ function init() {
   defineCustomBlocks();
   setupGenerator();
   initWorkspace();
+  initStage();
+  initCanvasTools();
   initToolboxPanel();
   initLayout();
   initCodeZoom();

@@ -11,6 +11,8 @@
   body { overflow: auto; }
 
   .app {
+    --log-bar-height: 48px;
+    --code-bar-height: 48px;
     height: auto;
     min-height: calc(100vh - var(--menubar-h));
     grid-template-columns: 1fr;
@@ -24,7 +26,9 @@
   .code-panel { grid-column: 1; grid-row: 3; }
   .log-panel { grid-column: 1; grid-row: 4; }
   .split-v, .split-h, .split-fixed { display: none; }
-  .app.log-hidden { grid-template-rows: auto minmax(400px, 58vh) 300px; }
+  .app.log-hidden { grid-template-rows: auto minmax(400px, 58vh) 300px var(--log-bar-height); }
+  .app.code-hidden { grid-template-columns: 1fr; grid-template-rows: auto minmax(400px, 58vh) var(--code-bar-height) 190px; }
+  .app.code-hidden.log-hidden { grid-template-rows: auto minmax(400px, 58vh) var(--code-bar-height) var(--log-bar-height); }
 
   .panel-head { height: 46px; padding: 0 12px; }
   .toolbox-head { height: 46px; padding: 0; }
@@ -55,7 +59,9 @@
   .btn { height: 36px; padding: 0 13px; font-size: 13px; }
   .panel-actions .btn { height: 30px; padding: 0 12px; font-size: 12.5px; }
   .app { grid-template-rows: auto minmax(360px, 54vh) 270px 180px; }
-  .app.log-hidden { grid-template-rows: auto minmax(360px, 54vh) 270px; }
+  .app.log-hidden { grid-template-rows: auto minmax(360px, 54vh) 270px var(--log-bar-height); }
+  .app.code-hidden { grid-template-rows: auto minmax(360px, 54vh) var(--code-bar-height) 180px; }
+  .app.code-hidden.log-hidden { grid-template-rows: auto minmax(360px, 54vh) var(--code-bar-height) var(--log-bar-height); }
   .panel-head { padding: 0 12px; }
   .toolbox-head { padding: 0; }
 }

@@ -27,7 +27,7 @@
   <div class="menu-root" data-menu="view">
     <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false">查看<span class="menu-key">(V)</span></button>
     <div class="menu-list" role="menu" hidden>
-      <button class="menu-item" type="button" role="menuitem" data-action="log">日志<span class="menu-state" id="logMenuState">显示中</span></button>
+      <button class="menu-item" type="button" role="menuitem" data-action="log">日志<span class="menu-state" id="logMenuState">已收起</span></button>
       <button class="menu-item" type="button" role="menuitem" data-action="settings">设置</button>
     </div>
   </div>
@@ -46,7 +46,7 @@
   </div>
 </nav>
 
-<main class="app">
+<main class="app log-hidden code-hidden">
   <section class="panel toolbox-panel">
     <div class="panel-head toolbox-head">
       <span class="panel-title">积木</span>
@@ -58,25 +58,72 @@
 
   <section class="panel editor-panel">
     <div class="panel-head">
-      <span class="panel-title">积木编辑区</span>
+      <span class="panel-title">编辑舞台</span>
       <div class="panel-actions">
-        <button class="btn stop" id="stopBtn" type="button">停止</button>
-        <button class="btn run" id="runBtn" type="button">运行</button>
+        <button class="btn ghost quick-save-btn" id="quickSaveBtn" type="button" title="保存工程" aria-label="保存工程">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>
+          保存
+        </button>
+        <button class="btn run run-stop-btn" id="runStopBtn" type="button" title="运行" aria-label="运行">运行</button>
       </div>
     </div>
     <div class="workspace-wrap">
       <div id="blocklyDiv"></div>
+
+      <div class="stage-empty" id="stageEmpty" role="region" aria-label="新手引导">
+        <div class="stage-empty-card">
+          <div class="stage-empty-art" aria-hidden="true"></div>
+          <div class="stage-empty-copy">
+            <span class="stage-empty-kicker">欢迎来到光影舞台</span>
+            <h2>让皮影动起来</h2>
+            <p class="stage-empty-sub">三步就能开演，不用先学代码。</p>
+            <ol class="stage-steps">
+              <li><span class="stage-step-num">1</span><span><b>连上机器人</b><small>USB 线最稳</small></span></li>
+              <li><span class="stage-step-num">2</span><span><b>拖入一块积木</b><small>从左边开始</small></span></li>
+              <li><span class="stage-step-num">3</span><span><b>点「运行」</b><small>看它动起来</small></span></li>
+            </ol>
+            <div class="stage-empty-actions">
+              <button class="btn primary stage-sample-btn" id="sampleBtn" type="button">试试示例：舵机转一转</button>
+              <span class="stage-empty-hint">或者，直接把积木拖进来</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-tools" role="toolbar" aria-label="画布工具">
+        <button class="canvas-tool" id="undoBtn" type="button" title="撤销" aria-label="撤销" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg>
+        </button>
+        <button class="canvas-tool" id="redoBtn" type="button" title="重做" aria-label="重做" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a7 7 0 0 0-7 7"/></svg>
+        </button>
+        <button class="canvas-tool" id="zoomInBtn" type="button" title="放大" aria-label="放大">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5M8 10.5h5M10.5 8v5"/></svg>
+        </button>
+        <button class="canvas-tool" id="zoomOutBtn" type="button" title="缩小" aria-label="缩小">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5M8 10.5h5"/></svg>
+        </button>
+        <button class="canvas-tool" id="fitBtn" type="button" title="看全图" aria-label="看全图" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg>
+        </button>
+      </div>
     </div>
   </section>
 
   <div class="splitter split-v" id="codeSplitter" role="separator" aria-orientation="vertical" aria-label="调整代码区宽度" title="拖动调整代码区宽度，双击恢复默认"></div>
 
-  <aside class="panel code-panel">
+  <aside class="panel code-panel" id="codePanel">
     <div class="panel-head">
       <div class="code-head">
         <span class="panel-title">代码预览</span>
         <span class="lang">MicroPython</span>
       </div>
+      <span class="code-rail-title">代码预览</span>
+      <span class="code-rail-lang">Python</span>
+      <button class="code-collapse" id="codeToggleBtn" type="button" title="展开代码面板" aria-label="展开代码面板" aria-expanded="false" aria-controls="codePanel">
+        <svg class="code-collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <svg class="code-expand-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></svg>
+      </button>
     </div>
     <div class="code-body">
       <pre id="codeText"></pre>
@@ -87,13 +134,16 @@
 
   <section class="panel log-panel" id="logPanel">
     <div class="panel-head">
-      <span class="panel-title">运行日志</span>
+      <span class="panel-title">机器人消息</span>
       <div class="log-tools">
         <span class="log-status" id="logStatus" role="status" aria-label="USB 串口 · 未连接">
-          <span class="log-status-text" id="logStatusText">USB 串口</span>
+          <span class="log-status-text" id="logStatusText">USB 串口 · 未连接</span>
           <span class="log-status-dot" id="logStatusDot" aria-hidden="true"></span>
         </span>
-        <button class="log-close" id="logCloseBtn" type="button" title="关闭运行日志" aria-label="关闭运行日志">×</button>
+        <span class="log-latest" id="logLatest" aria-live="polite">正在准备舞台…</span>
+        <button class="log-toggle" id="logToggleBtn" type="button" aria-expanded="false" aria-controls="logList" title="展开机器人消息" aria-label="展开机器人消息">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
       </div>
     </div>
     <div class="log-list" id="logList" aria-live="polite"></div>

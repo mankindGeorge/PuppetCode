@@ -5,9 +5,9 @@ import { Blockly } from '../vendor/index.js';
 import { runtime } from '../state.js';
 
 var STORAGE_KEY = 'puppetcode-layout-v1';
-var DEFAULTS = { codeWidth: 400, logHeight: 150 };
+var LAYOUT_VERSION = 2;
+var DEFAULTS = { logHeight: 150 };
 var CODE_MIN = 240;
-var CODE_MAX = 760;
 var LOG_MIN = 90;
 var LOG_MAX = 520;
 var MIN_EDITOR = 320;
@@ -16,7 +16,8 @@ var MIN_TOP = 260;
 var SPLITTER_SIZE = 10;
 
 var appEl = null;
-var logCloseEl = null;
+var logToggleEl = null;
+var codeToggleEl = null;
 var metrics = { padX: 0, padY: 0, toolbox: 0 };
 
 function measureLayout() {
@@ -37,15 +38,23 @@ function loadSizes() {
   } catch (error) {
     saved = {};
   }
+  // 旧版本没有 layoutVersion：代码区宽度退回“与舞台等宽”，
+  // 但保留用户已经调过的日志高度。
   return {
-    codeWidth: typeof saved.codeWidth === 'number' ? saved.codeWidth : DEFAULTS.codeWidth,
+    codeWidth: saved.layoutVersion === LAYOUT_VERSION && typeof saved.codeWidth === 'number'
+      ? saved.codeWidth
+      : null,
     logHeight: typeof saved.logHeight === 'number' ? saved.logHeight : DEFAULTS.logHeight
   };
 }
 
 function persist(sizes) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sizes));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      layoutVersion: LAYOUT_VERSION,
+      codeWidth: sizes.codeWidth,
+      logHeight: sizes.logHeight
+    }));
   } catch (error) {
     // 隐私模式等场景写入失败时忽略，布局仍可当前会话使用
   }
@@ -57,6 +66,12 @@ function setLogVisible(visible) {
   // 「查看 → 日志」右侧同步显示当前状态
   var menuState = document.getElementById('logMenuState');
   if (menuState) menuState.textContent = visible ? '显示中' : '已收起';
+  if (logToggleEl) {
+    var label = visible ? '收起机器人消息' : '展开机器人消息';
+    logToggleEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    logToggleEl.title = label;
+    logToggleEl.setAttribute('aria-label', label);
+  }
   if (visible) {
     var list = document.getElementById('logList');
     if (list) list.scrollTop = list.scrollHeight;
@@ -72,6 +87,22 @@ export function toggleLog() {
   if (appEl) setLogVisible(appEl.classList.contains('log-hidden'));
 }
 
+function setCodeVisible(visible) {
+  if (!appEl) return;
+  appEl.classList.toggle('code-hidden', !visible);
+  if (codeToggleEl) {
+    var codeLabel = visible ? '收起代码面板' : '展开代码面板';
+    codeToggleEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    codeToggleEl.title = codeLabel;
+    codeToggleEl.setAttribute('aria-label', codeLabel);
+  }
+  if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
+}
+
+function toggleCode() {
+  if (appEl) setCodeVisible(appEl.classList.contains('code-hidden'));
+}
+
 export function initLayout() {
   var app = document.querySelector('.app');
   var codeHandle = document.getElementById('codeSplitter');
@@ -79,7 +110,21 @@ export function initLayout() {
   if (!app || !codeHandle || !logHandle) return;
 
   appEl = app;
-  logCloseEl = document.getElementById('logCloseBtn');
+  logToggleEl = document.getElementById('logToggleBtn');
+  codeToggleEl = document.getElementById('codeToggleBtn');
+  // 首屏默认收起日志，只保留消息条；同步菜单文案与展开按钮状态。
+  setLogVisible(!app.classList.contains('log-hidden'));
+  setCodeVisible(!app.classList.contains('code-hidden'));
+  if (codeToggleEl) codeToggleEl.addEventListener('click', toggleCode);
+
+  // 收起后的整条代码导轨都可以点击展开；按钮本身仍由上面的切换逻辑处理。
+  var codeHeadEl = document.querySelector('.code-panel .panel-head');
+  if (codeHeadEl) {
+    codeHeadEl.addEventListener('click', function (event) {
+      if (event.target.closest('.code-collapse')) return;
+      if (app.classList.contains('code-hidden')) setCodeVisible(true);
+    });
+  }
 
   var sizes = loadSizes();
   var resizeFrame = 0;
@@ -92,11 +137,22 @@ export function initLayout() {
     });
   }
 
+  // 代码区与编辑区共享除分类栏、间距外的宽度；未手动拖过时默认各占一半。
+  function codeLimits() {
+    var total = app.clientWidth - metrics.padX - metrics.toolbox - SPLITTER_SIZE * 2;
+    var max = Math.max(CODE_MIN, total - MIN_EDITOR);
+    return {
+      max: max,
+      equal: clamp(Math.round(total / 2), CODE_MIN, max)
+    };
+  }
+
   // 窗口变窄/变矮时只压缩显示尺寸，不覆盖用户拖出来的偏好值；窗口放大可恢复
   function applyCodeWidth() {
-    var available = app.clientWidth - metrics.padX - metrics.toolbox - SPLITTER_SIZE * 2 - MIN_EDITOR;
-    var max = Math.max(CODE_MIN, Math.min(CODE_MAX, available));
-    var width = clamp(sizes.codeWidth, CODE_MIN, max);
+    var limits = codeLimits();
+    var width = sizes.codeWidth == null
+      ? limits.equal
+      : clamp(sizes.codeWidth, CODE_MIN, limits.max);
     app.style.setProperty('--code-width', width + 'px');
     codeHandle.setAttribute('aria-valuenow', String(Math.round(width)));
   }
@@ -110,7 +166,8 @@ export function initLayout() {
   }
 
   function setCodeWidth(width) {
-    sizes.codeWidth = clamp(width, CODE_MIN, CODE_MAX);
+    var limits = codeLimits();
+    sizes.codeWidth = clamp(Math.round(width), CODE_MIN, limits.max);
     applyCodeWidth();
   }
 
@@ -172,7 +229,9 @@ export function initLayout() {
       if (mode === 'log') {
         setLogHeight(DEFAULTS.logHeight);
       } else {
-        setCodeWidth(DEFAULTS.codeWidth);
+        // 双击分隔条恢复“舞台与代码区等宽”的默认布局
+        sizes.codeWidth = null;
+        applyCodeWidth();
       }
       if (runtime.workspace) Blockly.svgResize(runtime.workspace);
       persist(sizes);
@@ -187,7 +246,9 @@ export function initLayout() {
       } else {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
         step = event.key === 'ArrowRight' ? 16 : -16;
-        setCodeWidth(sizes.codeWidth - step);
+        // 默认等宽时 sizes.codeWidth 为 null，用当前等宽值作为基准。
+        var current = sizes.codeWidth == null ? codeLimits().equal : sizes.codeWidth;
+        setCodeWidth(current - step);
       }
       event.preventDefault();
       if (runtime.workspace) Blockly.svgResize(runtime.workspace);
@@ -202,7 +263,27 @@ export function initLayout() {
   bindDrag(logHandle, 'log');
   scheduleBlocklyResize();
 
-  if (logCloseEl) logCloseEl.addEventListener('click', function () { setLogVisible(false); });
+  // 首帧后重新量一次：页面初次布局时滚动条/字体度量可能还没稳定，
+  // 等尺寸落定后再确认“舞台与代码区等宽”。
+  requestAnimationFrame(function () {
+    measureLayout();
+    applyCodeWidth();
+    applyLogHeight();
+    if (runtime.workspace) Blockly.svgResize(runtime.workspace);
+  });
+
+  // 开发服务器注入样式、或滚动条出现/消失时，应用容器会再变一次尺寸；
+  // 监听自身尺寸，保证等宽默认值不会被首次测量误差带偏。
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      measureLayout();
+      applyCodeWidth();
+      applyLogHeight();
+      if (runtime.workspace) Blockly.svgResize(runtime.workspace);
+    }).observe(app);
+  }
+
+  if (logToggleEl) logToggleEl.addEventListener('click', toggleLog);
 
   window.addEventListener('resize', function () {
     measureLayout();

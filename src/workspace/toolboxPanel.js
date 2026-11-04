@@ -4,21 +4,21 @@
 import { Blockly } from '../vendor/index.js';
 import { runtime } from '../state.js';
 import { TOOLBOX_XML } from '../blocks/toolbox.js';
-import ariesIcon from '../assets/toolbox/aries.svg?raw';
-import taurusIcon from '../assets/toolbox/taurus.svg?raw';
-import geminiIcon from '../assets/toolbox/gemini.svg?raw';
-import cancerIcon from '../assets/toolbox/cancer.svg?raw';
-import leoIcon from '../assets/toolbox/leo.svg?raw';
-import virgoIcon from '../assets/toolbox/virgo.svg?raw';
+import loopIcon from '../assets/toolbox/loop.svg?raw';
+import branchIcon from '../assets/toolbox/branch.svg?raw';
+import calculatorIcon from '../assets/toolbox/calculator.svg?raw';
+import tagIcon from '../assets/toolbox/tag.svg?raw';
+import gearIcon from '../assets/toolbox/gear.svg?raw';
+import starIcon from '../assets/toolbox/star.svg?raw';
 
-// 分类图标：沿用上传的线条图标，按约定顺序对应六个分类
+// 分类图标：用图形直白表达分类含义，方便孩子快速定位
 var CATEGORY_ICONS = {
-  '基础控制': ariesIcon,
-  '条件判断': taurusIcon,
-  '数字运算': geminiIcon,
-  '变量': cancerIcon,
-  '舵机控制': leoIcon,
-  '组合动作': virgoIcon
+  '基础控制': loopIcon,
+  '条件判断': branchIcon,
+  '数字运算': calculatorIcon,
+  '变量': tagIcon,
+  '舵机控制': gearIcon,
+  '组合动作': starIcon
 };
 
 var entries = [];
