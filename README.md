@@ -2,14 +2,14 @@
 
 面向儿童的 4 路舵机皮影机器人图形化编程工具。拖拽积木生成 MicroPython，通过 USB 串口或 WiFi 发送到 ESP32 执行。
 
-当前为 **v1.0.0 预发布**；真实硬件路径尚未实机验证，组合动作积木仍在开发中。
+当前为 **v1.0.1 预发布**；真实硬件路径尚未实机验证，组合动作积木仍在开发中。
 
 ## 下载桌面版
 
 Windows 10 / 11（x64）：
 
-- [下载 PuppetCode-v1.0.0-win32-x64.zip](https://github.com/mankindGeorge/PuppetCode/releases/download/v1.0.0/PuppetCode-v1.0.0-win32-x64.zip)
-- [Release 页面](https://github.com/mankindGeorge/PuppetCode/releases/tag/v1.0.0)
+- [下载 PuppetCode-v1.0.1-win32-x64.zip](https://github.com/mankindGeorge/PuppetCode/releases/download/v1.0.1/PuppetCode-v1.0.1-win32-x64.zip)
+- [Release 页面](https://github.com/mankindGeorge/PuppetCode/releases/tag/v1.0.1)
 
 解压后运行 `PuppetCode.exe`，不要单独拷贝 exe，需保留整个文件夹。桌面版未签名，SmartScreen 可能提示；SHA256 见 Release 说明。机器人端需烧录 `main.py`，并按实际接线修改 `SERVO_PINS` 与 `COMM_MODE`。
 

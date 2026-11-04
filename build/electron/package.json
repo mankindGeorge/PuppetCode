@@ -1,7 +1,7 @@
 {
   "name": "puppetcode",
   "productName": "PuppetCode",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "光影智编 · 4 路舵机图形化编程工具",
   "main": "main.js",
   "author": "Puppet Robot",
