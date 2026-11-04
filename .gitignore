@@ -10,6 +10,10 @@ dist-web/
 # 由 build-desktop.ps1 从 dist-single 同步生成的副本
 build/electron/index.html
 
+# 本地代码代理约定，不随仓库发布
+AGENTS.md
+agents.md
+
 # 本地临时文件与工具缓存
 .screenshots/
 .trae-html-share-packages/
