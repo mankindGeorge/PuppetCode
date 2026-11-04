@@ -63,7 +63,7 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast), opacity 0.08s ease;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .code-collapse:hover {
@@ -86,18 +86,6 @@
 
 .app.code-hidden .code-body { display: none; }
 .app.code-hidden .code-panel .panel-head { cursor: pointer; }
-
-/* 极短交叉淡入淡出：只淡内容，不移动布局，避免弹出或空白面板 */
-.code-head,
-.code-body,
-.code-rail-title,
-.code-rail-lang { transition: opacity 0.08s ease; }
-
-.app.code-switching .code-head,
-.app.code-switching .code-body,
-.app.code-switching .code-rail-title,
-.app.code-switching .code-rail-lang,
-.app.code-switching .code-collapse { opacity: 0; }
 
 @media (min-width: 821px) {
   .app.code-hidden .code-panel .panel-head {

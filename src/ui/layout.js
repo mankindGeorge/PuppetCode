@@ -19,8 +19,6 @@ var appEl = null;
 var logToggleEl = null;
 var codeToggleEl = null;
 var codeIconEl = null;
-var codeSwitching = false;
-var codeSwitchTimer = 0;
 var metrics = { padX: 0, padY: 0, toolbox: 0 };
 
 function measureLayout() {
@@ -104,40 +102,16 @@ function updateCodeLabels(visible) {
   }
 }
 
-function setCodeVisible(visible, immediate) {
-  if (!appEl || codeSwitching) return;
+function setCodeVisible(visible) {
+  if (!appEl) return;
   var wasVisible = !appEl.classList.contains('code-hidden');
   var iconHadFocus = !visible && document.activeElement === codeIconEl;
   updateCodeLabels(visible);
   if (wasVisible === visible) return;
 
-  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (immediate || reduceMotion) {
-    appEl.classList.remove('code-switching');
-    appEl.classList.toggle('code-hidden', !visible);
-    if (iconHadFocus && codeToggleEl) codeToggleEl.focus();
-    if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
-    return;
-  }
-
-  // 极短的交叉淡入淡出：内容先淡出，换布局后再淡入，不做位移。
-  codeSwitching = true;
-  window.clearTimeout(codeSwitchTimer);
-  appEl.classList.add('code-switching');
-
-  codeSwitchTimer = window.setTimeout(function () {
-    appEl.classList.toggle('code-hidden', !visible);
-    if (iconHadFocus && codeToggleEl) codeToggleEl.focus();
-    if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
-
-    // 先让新布局以 opacity: 0 渲染一帧，再移除类触发淡入。
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        appEl.classList.remove('code-switching');
-        codeSwitching = false;
-      });
-    });
-  }, 80);
+  appEl.classList.toggle('code-hidden', !visible);
+  if (iconHadFocus && codeToggleEl) codeToggleEl.focus();
+  if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
 }
 
 function toggleCode() {
@@ -156,7 +130,7 @@ export function initLayout() {
   codeIconEl = document.getElementById('codeIconBtn');
   // 首屏默认收起日志，只保留消息条；同步菜单文案与展开按钮状态。
   setLogVisible(!app.classList.contains('log-hidden'));
-  setCodeVisible(!app.classList.contains('code-hidden'), true);
+  setCodeVisible(!app.classList.contains('code-hidden'));
   if (codeToggleEl) codeToggleEl.addEventListener('click', toggleCode);
   if (codeIconEl) {
     codeIconEl.addEventListener('click', function (event) {
