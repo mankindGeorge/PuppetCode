@@ -194,6 +194,9 @@
   background: var(--color-panel-bg);
 }
 
+/* .btn 的 display 会覆盖浏览器默认的 [hidden]，保存模式的「不保存」必须真正隐藏 */
+.modal-foot .btn[hidden] { display: none; }
+
 .modal-foot .hint-inline {
   margin-right: auto;
   font-size: 11.5px;

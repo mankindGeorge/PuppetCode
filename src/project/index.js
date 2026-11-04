@@ -164,7 +164,11 @@ function bindSavePrompt() {
     if (promptMode === 'exit') finishExit();
     else closePrompt();
   });
-  document.getElementById('saveSkipBtn').addEventListener('click', finishExit);
+  document.getElementById('saveSkipBtn').addEventListener('click', function () {
+    // 防御：保存模式下按钮应隐藏，即使误触也只能关闭弹窗，不能退出应用。
+    if (promptMode === 'exit') finishExit();
+    else closePrompt();
+  });
   document.getElementById('saveCancelBtn').addEventListener('click', closePrompt);
 
   document.getElementById('saveName').addEventListener('keydown', function (event) {
