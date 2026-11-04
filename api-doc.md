@@ -229,11 +229,11 @@
 
 ---
 
-## 3. USB 串口模式（默认）
+## 3. USB 串口模式
 
 ### 3.1 连接流程
 
-1. ESP32 烧录 `main.py` 后复位；`COMM_MODE = "SERIAL"`。
+1. ESP32 烧录 `main.py` 后复位；串口通信需把 `COMM_MODE` 改为 `"SERIAL"`（固件默认是 `"WIFI_AP"`）。
 2. 浏览器用 Chrome / Edge 打开 `index.html`（`file://` 或 `https://`）。
 3. 打开「设置」→「USB 串口」，选择波特率（默认 `115200`，需与固件 REPL 一致）。
 4. 点击「连接」，浏览器弹出串口选择框（Web Serial `navigator.serial.requestPort()`）。
@@ -562,7 +562,7 @@ connect() → 等待 ready（或发 hello）
 
 | 常量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `COMM_MODE` | `"SERIAL"` | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
+| `COMM_MODE` | `"WIFI_AP"` | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
 | `WIFI_SSID` | `YOUR_WIFI_SSID` | STA 模式路由器名称 |
 | `WIFI_PASSWORD` | `YOUR_WIFI_PASSWORD` | STA 模式路由器密码 |
 | `AP_SSID` | `PuppetRobot` | AP 热点名称 |

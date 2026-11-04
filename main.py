@@ -11,9 +11,9 @@
 
 通信方式：
     修改下方 COMM_MODE 常量后重新烧录 / 复位即可切换：
-        "SERIAL"    USB 串口（默认，Web Serial 直连）
+        "SERIAL"    USB 串口（Web Serial 直连）
         "WIFI_STA"  设备与前端处于同一局域网，WebSocket 通信
-        "WIFI_AP"   前端连接设备热点，WebSocket 通信
+        "WIFI_AP"   前端连接设备热点，WebSocket 通信（默认）
 
 依赖：仅使用 MicroPython 标准固件内置模块，无任何第三方库。
 """
@@ -33,7 +33,7 @@ import network
 # =============================================================================
 
 # 通信模式："SERIAL" | "WIFI_STA" | "WIFI_AP"
-COMM_MODE = "SERIAL"
+COMM_MODE = "WIFI_AP"
 
 # WiFi STA 模式：设备作为客户端连接的路由器
 WIFI_SSID = "YOUR_WIFI_SSID"

@@ -62,7 +62,7 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 
 | 常量 | 默认值 |
 | --- | --- |
-| `COMM_MODE` | `"SERIAL"` |
+| `COMM_MODE` | `"WIFI_AP"` |
 | `WIFI_SSID` / `WIFI_PASSWORD` | 占位常量，按实际网络修改 |
 | `AP_SSID` / `AP_PASSWORD` | `PuppetRobot` / `12345678` |
 | `AP_IP` / `WS_PORT` | `192.168.4.1` / `8080` |
