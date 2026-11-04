@@ -113,23 +113,34 @@
   <div class="splitter split-v" id="codeSplitter" role="separator" aria-orientation="vertical" aria-label="调整代码区宽度" title="拖动调整代码区宽度，双击恢复默认"></div>
 
   <aside class="panel code-panel" id="codePanel">
-    <div class="panel-head">
-      <div class="code-head">
-        <button class="code-head-toggle" id="codeIconBtn" type="button" title="收起代码面板" aria-label="收起代码面板" aria-expanded="true" aria-controls="codePanel">
-          <span class="code-head-icon" aria-hidden="true"></span>
+    <div class="code-frame">
+      <div class="panel-head">
+        <div class="code-head">
+          <button class="code-head-toggle" id="codeIconBtn" type="button" title="收起代码面板" aria-label="收起代码面板" aria-expanded="true" aria-controls="codePanel">
+            <span class="code-head-icon" aria-hidden="true"></span>
+          </button>
+          <span class="panel-title">代码预览</span>
+          <span class="lang">MicroPython</span>
+        </div>
+        <button class="code-collapse" id="codeToggleBtn" type="button" title="收起代码面板" aria-label="收起代码面板" aria-expanded="true" aria-controls="codePanel">
+          <svg class="code-collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
         </button>
-        <span class="panel-title">代码预览</span>
-        <span class="lang">MicroPython</span>
       </div>
-      <span class="code-rail-title">代码预览</span>
-      <span class="code-rail-lang">Python</span>
-      <button class="code-collapse" id="codeToggleBtn" type="button" title="展开代码面板" aria-label="展开代码面板" aria-expanded="false" aria-controls="codePanel">
-        <svg class="code-collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-        <span class="code-expand-icon" aria-hidden="true"></span>
-      </button>
+      <div class="code-body">
+        <pre id="codeText"></pre>
+      </div>
     </div>
-    <div class="code-body">
-      <pre id="codeText"></pre>
+    <div class="code-rail" id="codeRail">
+      <div class="code-rail-anchor">
+        <button class="code-rail-toggle" id="codeRailBtn" type="button" aria-label="展开代码面板" aria-expanded="false" aria-controls="codePanel">
+          <span class="code-rail-icon" aria-hidden="true"></span>
+        </button>
+        <span class="code-rail-hint" aria-hidden="true">
+          <span class="code-rail-title">代码预览</span>
+          <span class="code-rail-lang">Python</span>
+        </span>
+        <svg class="code-rail-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </div>
     </div>
   </aside>
 

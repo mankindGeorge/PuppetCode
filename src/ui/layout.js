@@ -14,11 +14,21 @@ var MIN_EDITOR = 320;
 var MIN_TOP = 260;
 // 与 workspace.css 中分隔条的 grid 尺寸保持一致（10px 间距即拖拽命中区）
 var SPLITTER_SIZE = 10;
+// 与 code.css / workspace.css 的动画时长保持一致
+var CODE_EXPAND_MS = 240;
+var CODE_COLLAPSE_MS = 200;
 
 var appEl = null;
 var logToggleEl = null;
 var codeToggleEl = null;
 var codeIconEl = null;
+var codePanelEl = null;
+var codeRailEl = null;
+var codeRailBtn = null;
+var codeSwitching = false;
+var codeSwitchTimer = 0;
+var codeFinishHandler = null;
+var codeResizeFrame = 0;
 var metrics = { padX: 0, padY: 0, toolbox: 0 };
 
 function measureLayout() {
@@ -89,7 +99,7 @@ export function toggleLog() {
 }
 
 function updateCodeLabels(visible) {
-  var label = visible ? '收起代码面板' : '展开代码面板';
+  var label = '收起代码面板';
   if (codeToggleEl) {
     codeToggleEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
     codeToggleEl.title = label;
@@ -100,18 +110,102 @@ function updateCodeLabels(visible) {
     codeIconEl.title = label;
     codeIconEl.setAttribute('aria-label', label);
   }
+  if (codeRailBtn) {
+    codeRailBtn.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    codeRailBtn.setAttribute('aria-label', '展开代码面板');
+  }
 }
 
-function setCodeVisible(visible) {
-  if (!appEl) return;
+// 面板宽度在 CSS 里过渡，Blockly 画布需要跟着每一帧改尺寸，否则结尾会跳一下。
+// 循环由 finishCodeSwitch 取消，实际过渡被延迟时也能覆盖到最后一帧。
+function startCodeResizeLoop() {
+  window.cancelAnimationFrame(codeResizeFrame);
+  function step() {
+    if (runtime.workspace) Blockly.svgResize(runtime.workspace);
+    codeResizeFrame = requestAnimationFrame(step);
+  }
+  codeResizeFrame = requestAnimationFrame(step);
+}
+
+// 动画结束时才移动焦点；若用户中途点了别处也不要把焦点抢回来。
+// 立即试一次，下一个任务再补一次，兼容刚切换 visibility 后按钮短暂不可聚焦的情况。
+function restoreCodeFocus(focusTarget, hadFocus) {
+  if (!hadFocus || !focusTarget) return;
+  function applyFocus() {
+    var active = document.activeElement;
+    if (active && active !== document.body && !(codePanelEl && codePanelEl.contains(active))) return;
+    focusTarget.focus({ preventScroll: true });
+  }
+  applyFocus();
+  window.setTimeout(applyFocus, 0);
+}
+
+function finishCodeSwitch(focusTarget, hadFocus) {
+  if (!codeSwitching) return;
+  window.clearTimeout(codeSwitchTimer);
+  window.cancelAnimationFrame(codeResizeFrame);
+  codeResizeFrame = 0;
+  if (codeFinishHandler) {
+    appEl.removeEventListener('transitionend', codeFinishHandler);
+    codeFinishHandler = null;
+  }
+  appEl.classList.remove('code-animating', 'code-opening', 'code-closing');
+  codeSwitching = false;
+  restoreCodeFocus(focusTarget, hadFocus);
+  if (runtime.workspace) Blockly.svgResize(runtime.workspace);
+}
+
+function setCodeVisible(visible, immediate) {
+  if (!appEl || codeSwitching) return;
+
   var wasVisible = !appEl.classList.contains('code-hidden');
-  var iconHadFocus = !visible && document.activeElement === codeIconEl;
   updateCodeLabels(visible);
   if (wasVisible === visible) return;
 
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var narrow = window.matchMedia && window.matchMedia('(max-width: 820px)').matches;
+  var hadFocus = !!(codePanelEl && codePanelEl.contains(document.activeElement));
+  var focusTarget = visible ? codeIconEl : codeRailBtn;
+
+  // 窄屏是上下堆叠布局，减少动态时也不应等待桌面宽度动画。
+  if (immediate || reduceMotion || narrow) {
+    window.clearTimeout(codeSwitchTimer);
+    window.cancelAnimationFrame(codeResizeFrame);
+    codeResizeFrame = 0;
+    if (codeFinishHandler) {
+      appEl.removeEventListener('transitionend', codeFinishHandler);
+      codeFinishHandler = null;
+    }
+    appEl.classList.remove('code-animating', 'code-opening', 'code-closing');
+    appEl.classList.toggle('code-hidden', !visible);
+    // 先让新的 visibility 生效，否则刚显示/隐藏的按钮可能无法立刻获得焦点。
+    void appEl.offsetWidth;
+    restoreCodeFocus(focusTarget, hadFocus);
+    if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
+    return;
+  }
+
+  // 内容层和导轨的淡入淡出由方向类驱动；列宽过渡需要先建立起始样式，
+  // 强制一次样式计算后再切换 code-hidden，避免同帧修改导致没有中间帧。
+  var duration = visible ? CODE_EXPAND_MS : CODE_COLLAPSE_MS;
+  codeSwitching = true;
+  window.clearTimeout(codeSwitchTimer);
+  appEl.classList.add('code-animating', visible ? 'code-opening' : 'code-closing');
+  void appEl.offsetWidth;
   appEl.classList.toggle('code-hidden', !visible);
-  if (iconHadFocus && codeToggleEl) codeToggleEl.focus();
-  if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
+
+  // 以列宽实际结束为准，避免首帧延迟导致导轨还没淡入就被清理；
+  // 兜底计时器防止过渡被浏览器跳过时一直卡在切换态。
+  function onCodeTransitionEnd(event) {
+    if (event.target !== appEl || event.propertyName !== 'grid-template-columns') return;
+    finishCodeSwitch(focusTarget, hadFocus);
+  }
+  codeFinishHandler = onCodeTransitionEnd;
+  appEl.addEventListener('transitionend', onCodeTransitionEnd);
+  startCodeResizeLoop();
+  codeSwitchTimer = window.setTimeout(function () {
+    finishCodeSwitch(focusTarget, hadFocus);
+  }, duration + 160);
 }
 
 function toggleCode() {
@@ -128,22 +222,18 @@ export function initLayout() {
   logToggleEl = document.getElementById('logToggleBtn');
   codeToggleEl = document.getElementById('codeToggleBtn');
   codeIconEl = document.getElementById('codeIconBtn');
+  codePanelEl = document.getElementById('codePanel');
+  codeRailEl = document.getElementById('codeRail');
+  codeRailBtn = document.getElementById('codeRailBtn');
   // 首屏默认收起日志，只保留消息条；同步菜单文案与展开按钮状态。
   setLogVisible(!app.classList.contains('log-hidden'));
-  setCodeVisible(!app.classList.contains('code-hidden'));
+  setCodeVisible(!app.classList.contains('code-hidden'), true);
   if (codeToggleEl) codeToggleEl.addEventListener('click', toggleCode);
-  if (codeIconEl) {
-    codeIconEl.addEventListener('click', function (event) {
-      event.stopPropagation();
-      toggleCode();
-    });
-  }
+  if (codeIconEl) codeIconEl.addEventListener('click', toggleCode);
 
-  // 收起后的整条代码导轨都可以点击展开；按钮本身仍由上面的切换逻辑处理。
-  var codeHeadEl = document.querySelector('.code-panel .panel-head');
-  if (codeHeadEl) {
-    codeHeadEl.addEventListener('click', function (event) {
-      if (event.target.closest('.code-collapse, .code-head-toggle')) return;
+  // 收起后的整条导轨都可以点击展开，图标按钮只负责键盘和悬浮提示。
+  if (codeRailEl) {
+    codeRailEl.addEventListener('click', function () {
       if (app.classList.contains('code-hidden')) setCodeVisible(true);
     });
   }

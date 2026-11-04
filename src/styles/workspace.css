@@ -39,6 +39,20 @@
 
 .app.code-hidden .split-v { display: none; }
 
+/* 代码区切换时只过渡列宽；拖分隔条和窗口尺寸变化不经过这些类，保持即时跟手。
+   时长与 layout.js 的 CODE_EXPAND_MS / CODE_COLLAPSE_MS 保持一致。 */
+@media (min-width: 821px) {
+  .app.code-animating {
+    transition: grid-template-columns 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .app.code-animating.code-closing {
+    transition-duration: 200ms;
+  }
+
+  .app.code-animating .split-v { pointer-events: none; }
+}
+
 .panel {
   background: var(--color-panel-bg);
   border: 1px solid var(--color-border);
