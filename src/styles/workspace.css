@@ -86,7 +86,7 @@
 
 .toolbox-head .panel-title::before { background-image: url('../assets/decor/icon-blocks.png'); }
 .editor-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-editor.png'); }
-.code-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-code.png'); }
+.code-panel .panel-head .panel-title::before { background-image: var(--code-icon); }
 .log-panel .panel-head .panel-title::before { background-image: url('../assets/decor/icon-log.png'); }
 
 .panel-actions {

@@ -1,5 +1,6 @@
 /* 代码预览：白色卡片和浅蓝标题栏，代码本身保持清晰安静。 */
 .code-panel {
+  --code-icon: url('../assets/decor/icon-code.png');
   grid-column: 5;
   grid-row: 1;
 }
@@ -8,6 +9,33 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* 展开状态标题前的代码图标也是收起按钮 */
+.code-panel .panel-head .panel-title::before { display: none; }
+
+.code-head-toggle {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.code-head-toggle:hover { background: var(--color-primary-soft); }
+.code-head-toggle:active { transform: scale(0.94); }
+
+.code-head-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  background: var(--code-icon) center / contain no-repeat;
 }
 
 /* 语言标签做成小胶囊，不再用半透明白字 */
@@ -48,6 +76,13 @@
 .code-rail-title,
 .code-rail-lang,
 .code-expand-icon { display: none; }
+
+/* 收起导轨上的展开图标沿用展开状态「代码预览」标题前的图标 */
+.code-expand-icon {
+  width: 20px;
+  height: 20px;
+  background: var(--code-icon) center / contain no-repeat;
+}
 
 .app.code-hidden .code-body { display: none; }
 .app.code-hidden .code-panel .panel-head { cursor: pointer; }

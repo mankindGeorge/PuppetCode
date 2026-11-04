@@ -18,6 +18,7 @@ var SPLITTER_SIZE = 10;
 var appEl = null;
 var logToggleEl = null;
 var codeToggleEl = null;
+var codeIconEl = null;
 var metrics = { padX: 0, padY: 0, toolbox: 0 };
 
 function measureLayout() {
@@ -87,15 +88,29 @@ export function toggleLog() {
   if (appEl) setLogVisible(appEl.classList.contains('log-hidden'));
 }
 
+function updateCodeLabels(visible) {
+  var label = visible ? '收起代码面板' : '展开代码面板';
+  if (codeToggleEl) {
+    codeToggleEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    codeToggleEl.title = label;
+    codeToggleEl.setAttribute('aria-label', label);
+  }
+  if (codeIconEl) {
+    codeIconEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    codeIconEl.title = label;
+    codeIconEl.setAttribute('aria-label', label);
+  }
+}
+
 function setCodeVisible(visible) {
   if (!appEl) return;
+  var wasVisible = !appEl.classList.contains('code-hidden');
+  var iconHadFocus = !visible && document.activeElement === codeIconEl;
+  updateCodeLabels(visible);
+  if (wasVisible === visible) return;
+
   appEl.classList.toggle('code-hidden', !visible);
-  if (codeToggleEl) {
-    var codeLabel = visible ? '收起代码面板' : '展开代码面板';
-    codeToggleEl.setAttribute('aria-expanded', visible ? 'true' : 'false');
-    codeToggleEl.title = codeLabel;
-    codeToggleEl.setAttribute('aria-label', codeLabel);
-  }
+  if (iconHadFocus && codeToggleEl) codeToggleEl.focus();
   if (runtime.workspace) requestAnimationFrame(function () { Blockly.svgResize(runtime.workspace); });
 }
 
@@ -112,16 +127,23 @@ export function initLayout() {
   appEl = app;
   logToggleEl = document.getElementById('logToggleBtn');
   codeToggleEl = document.getElementById('codeToggleBtn');
+  codeIconEl = document.getElementById('codeIconBtn');
   // 首屏默认收起日志，只保留消息条；同步菜单文案与展开按钮状态。
   setLogVisible(!app.classList.contains('log-hidden'));
   setCodeVisible(!app.classList.contains('code-hidden'));
   if (codeToggleEl) codeToggleEl.addEventListener('click', toggleCode);
+  if (codeIconEl) {
+    codeIconEl.addEventListener('click', function (event) {
+      event.stopPropagation();
+      toggleCode();
+    });
+  }
 
   // 收起后的整条代码导轨都可以点击展开；按钮本身仍由上面的切换逻辑处理。
   var codeHeadEl = document.querySelector('.code-panel .panel-head');
   if (codeHeadEl) {
     codeHeadEl.addEventListener('click', function (event) {
-      if (event.target.closest('.code-collapse')) return;
+      if (event.target.closest('.code-collapse, .code-head-toggle')) return;
       if (app.classList.contains('code-hidden')) setCodeVisible(true);
     });
   }
