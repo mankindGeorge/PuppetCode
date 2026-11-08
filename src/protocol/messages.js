@@ -3,7 +3,7 @@ import { conn, runtime } from '../state.js';
 import { addLog } from '../ui/log.js';
 import { updateConnUI, updateRunButtons } from '../ui/status.js';
 import { stopReadyProbe } from '../connection/probe.js';
-import { clearRunWatchdogs, noteExecutionStarted } from '../connection/watchdog.js';
+import { clearRunWatchdogs, isExecutionAbandoned, noteExecutionStarted } from '../connection/watchdog.js';
 
 export function handleDeviceMessage(message) {
   if (!message || typeof message !== 'object') return;
@@ -18,6 +18,9 @@ export function handleDeviceMessage(message) {
   }
 
   if (message.type === 'ack') {
+    // 启动看门狗已超时恢复后，忽略该次执行迟到的 started，避免重新进入运行态。
+    if (message.stage === 'started'
+      && isExecutionAbandoned(message.id || runtime.currentExecId)) return;
     var ackText = {
       received: '设备已接收代码',
       started: '设备开始执行',
