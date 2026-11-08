@@ -1,15 +1,22 @@
 // 通信设置弹窗：读取/保存表单、模式切换面板、打开与关闭。
 import { settings, saveSettings } from '../state.js';
+import { DEFAULTS } from '../config.js';
 import { openModal, closeModal } from './modal.js';
+
+// 端口必须在 1-65535 内，非法输入回退默认值，避免把无效端口静默存进设置。
+function readPort(id, fallback) {
+  var port = parseInt(document.getElementById(id).value, 10);
+  return isFinite(port) && port >= 1 && port <= 65535 ? port : fallback;
+}
 
 export function readSettingsUI() {
   settings.baudRate = parseInt(document.getElementById('baudRate').value, 10) || 115200;
   settings.staIp = document.getElementById('staIp').value.trim();
-  settings.staPort = parseInt(document.getElementById('staPort').value, 10) || 8080;
+  settings.staPort = readPort('staPort', DEFAULTS.staPort);
   settings.staSsid = document.getElementById('staSsid').value.trim();
   settings.staPassword = document.getElementById('staPassword').value;
   settings.apIp = document.getElementById('apIp').value.trim();
-  settings.apPort = parseInt(document.getElementById('apPort').value, 10) || 8080;
+  settings.apPort = readPort('apPort', DEFAULTS.apPort);
   settings.apSsid = document.getElementById('apSsid').value.trim();
   settings.apPassword = document.getElementById('apPassword').value;
 }

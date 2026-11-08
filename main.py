@@ -67,6 +67,9 @@ STOP_TIMEOUT_MS = 3000
 MAX_SERIAL_LINE_BYTES = 256 * 1024   # 串口单行（NDJSON）
 MAX_WS_MESSAGE_BYTES = 512 * 1024    # WebSocket 单条消息
 
+# print 无换行残留缓冲上限：超限只保留最新内容并告警一次，防止耗尽内存
+MAX_LOG_BUFFER_CHARS = 4096
+
 # WebSocket 握手固定字符串（RFC 6455）
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -98,6 +101,7 @@ class _LogStream:
 
     def __init__(self):
         self._buffer = ""
+        self._warned = False
 
     def write(self, text):
         if text is None:
@@ -111,6 +115,14 @@ class _LogStream:
             self._buffer = self._buffer[index + 1:]
             if line:
                 _emit_log("print", line)
+        if not self._buffer:
+            self._warned = False
+        elif len(self._buffer) > MAX_LOG_BUFFER_CHARS:
+            # 只保留最新尾部，避免无换行输出无限累积耗尽内存
+            self._buffer = self._buffer[-MAX_LOG_BUFFER_CHARS:]
+            if not self._warned:
+                self._warned = True
+                _emit_log("warn", "打印输出过长，已截断无换行残留内容")
         return len(str(text))
 
     def drain(self):
@@ -118,6 +130,7 @@ class _LogStream:
         if self._buffer:
             line = self._buffer.replace("\r", "")
             self._buffer = ""
+            self._warned = False
             if line:
                 _emit_log("print", line)
 
@@ -420,37 +433,39 @@ def _handle_stop():
 # =============================================================================
 
 def _serial_reader():
-    """串口读取线程：按换行符切分 JSON 报文。"""
-    buffer = ""
+    """串口读取线程：按换行符切分 JSON 报文。
+
+    逐字节累积原始字节，凑满一行后一次性按 UTF-8 解码，
+    避免中文等多字节字符被逐字节解码拆散损坏。
+    """
+    buffer = bytearray()
     discarded = False
     while True:
         try:
-            char = _stdin.read(1)
+            chunk = _stdin.read(1)
         except Exception:
             time.sleep_ms(10)
             continue
-        if not char:
+        if not chunk:
             time.sleep_ms(5)
             continue
-        if isinstance(char, bytes):
-            try:
-                char = char.decode()
-            except Exception:
-                continue
-        if char == "\r":
-            continue
-        if char == "\n":
-            line = buffer
-            buffer = ""
+        if isinstance(chunk, str):
+            chunk = chunk.encode()
+        if chunk == b"\n":
+            line = bytes(buffer)
+            buffer = bytearray()
             if discarded:
                 # 超限行剩余部分一直丢弃到换行，避免误解析半截报文
                 discarded = False
                 continue
-            _handle_line(line)
+            if line.endswith(b"\r"):
+                line = line[:-1]
+            _handle_line(line.decode("utf-8", "replace"))
         elif not discarded:
-            buffer += char
+            buffer += chunk
+            # 上限按字节计，与 MAX_SERIAL_LINE_BYTES 名义一致
             if len(buffer) > MAX_SERIAL_LINE_BYTES:
-                buffer = ""
+                buffer = bytearray()
                 discarded = True
                 _send({
                     "type": "error",
@@ -512,8 +527,10 @@ def _wifi_sta():
 def _wifi_ap():
     ap = network.WLAN(network.AP_IF)
     ap.active(True)
-    ap.config(essid=AP_SSID, password=AP_PASSWORD)
-    ap.ifconfig((AP_IP, "255.255.255.0", AP_IP, "8.8.8.8"))
+    # 显式指定 WPA2-PSK：部分固件缺省 authmode 为 OPEN，会把热点变成开放网络
+    ap.config(essid=AP_SSID, password=AP_PASSWORD, authmode=network.AUTH_WPA2_PSK)
+    # 孤立热点没有外网，DNS 指向设备自身，避免客户端去等不可达的公共 DNS
+    ap.ifconfig((AP_IP, "255.255.255.0", AP_IP, AP_IP))
     _debug("热点已开启: " + AP_SSID + "，设备 IP: " + AP_IP)
     return AP_IP
 
