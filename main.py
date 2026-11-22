@@ -341,6 +341,12 @@ def _start_execution(message):
         return
 
     _send({"type": "ack", "stage": "received", "id": exec_id})
+    if _transport == "WS":
+        # WiFi 模式在主线程同步执行：避免 MicroPython 线程栈过小、
+        # 以及从第二个线程向同一个 WebSocket 发送导致的静默失败。
+        # 代价：执行期间不会读取 stop 帧，停止依赖前端看门狗兜底。
+        _run_user_code(code, exec_id, False)
+        return
     try:
         _thread.start_new_thread(_executor, (code, exec_id))
     except Exception as error:
@@ -352,16 +358,25 @@ def _start_execution(message):
         })
 
 
-def _executor(code, exec_id):
-    """执行线程：一次性 exec 完整代码，并捕获输出与异常。"""
+def _run_user_code(code, exec_id, capture_output):
+    """执行一次用户代码；WS 模式由主线程调用，串口模式由执行线程调用。"""
     global _running
 
-    old_stdout = sys.stdout
-    log_stream = _LogStream()
-    sys.stdout = log_stream
-
+    # 先回 started，再做可能失败/耗时的输出重定向，确保前端能离开“等待开始”状态。
     _send({"type": "ack", "stage": "started", "id": exec_id})
     _emit_log("info", "开始执行代码")
+
+    old_stdout = None
+    log_stream = None
+    if capture_output:
+        try:
+            old_stdout = sys.stdout
+            log_stream = _LogStream()
+            sys.stdout = log_stream
+        except Exception:
+            # 部分固件不允许替换 sys.stdout，此时放弃捕获，继续执行。
+            old_stdout = None
+            log_stream = None
 
     ok = True
     reason = None
@@ -390,11 +405,16 @@ def _executor(code, exec_id):
         except Exception:
             pass
     finally:
-        try:
-            log_stream.drain()
-        except Exception:
-            pass
-        sys.stdout = old_stdout
+        if log_stream is not None:
+            try:
+                log_stream.drain()
+            except Exception:
+                pass
+        if old_stdout is not None:
+            try:
+                sys.stdout = old_stdout
+            except Exception:
+                pass
         _send({
             "type": "done",
             "id": exec_id,
@@ -402,6 +422,11 @@ def _executor(code, exec_id):
             "reason": reason,
         })
         _running = False
+
+
+def _executor(code, exec_id):
+    """串口模式执行线程：捕获 print 并回传日志。"""
+    _run_user_code(code, exec_id, True)
 
 
 def _handle_stop():
