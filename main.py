@@ -40,7 +40,7 @@ WIFI_SSID = "YOUR_WIFI_SSID"
 WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
 
 # WiFi AP 模式：设备创建的热点
-AP_SSID = "PuppetRobot"
+AP_SSID = "puppet"
 AP_PASSWORD = "12345678"
 AP_IP = "192.168.4.1"
 
@@ -51,7 +51,7 @@ WS_PORT = 8080
 PROTOCOL_VERSION = "1.0"
 
 # 4 路舵机所接 GPIO（可按实际接线修改）
-SERVO_PINS = (13, 14, 25, 26)
+SERVO_PINS = (2, 4, 13, 14)
 
 # 舵机 PWM 参数
 SERVO_FREQ = 50            # 50Hz（20ms 周期）
@@ -526,9 +526,18 @@ def _wifi_sta():
 
 def _wifi_ap():
     ap = network.WLAN(network.AP_IF)
+    # 先关闭再开启，保证复位后热点配置重新生效（给 Thonny/串口留出启动窗口）
+    ap.active(False)
+    time.sleep_ms(500)
     ap.active(True)
     # 显式指定 WPA2-PSK：部分固件缺省 authmode 为 OPEN，会把热点变成开放网络
     ap.config(essid=AP_SSID, password=AP_PASSWORD, authmode=network.AUTH_WPA2_PSK)
+    # 降低发射功率，热点更稳定；部分固件不支持该参数时忽略
+    try:
+        ap.config(txpower=12)
+    except Exception:
+        pass
+    time.sleep_ms(1500)
     # 孤立热点没有外网，DNS 指向设备自身，避免客户端去等不可达的公共 DNS
     ap.ifconfig((AP_IP, "255.255.255.0", AP_IP, AP_IP))
     _debug("热点已开启: " + AP_SSID + "，设备 IP: " + AP_IP)
@@ -729,6 +738,9 @@ def _ws_send_text(text):
 
 def main():
     global _out, _stdin, _transport
+
+    # 开机等待 3 秒，给 Thonny 留连接窗口
+    time.sleep_ms(3000)
 
     _out = sys.stdout
     _stdin = sys.stdin
