@@ -64,22 +64,25 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 | --- | --- |
 | `COMM_MODE` | `"WIFI_AP"` |
 | `WIFI_SSID` / `WIFI_PASSWORD` | 占位常量，按实际网络修改 |
-| `AP_SSID` / `AP_PASSWORD` | `PuppetRobot` / `12345678` |
+| `AP_SSID` / `AP_PASSWORD` | `puppet` / `12345678` |
 | `AP_IP` / `WS_PORT` | `192.168.4.1` / `8080` |
 | `PROTOCOL_VERSION` | `"1.0"` |
-| `SERVO_PINS` | `(13, 14, 25, 26)` |
-| `STOP_TIMEOUT_MS` | `3000` |
+| `SERVO_PINS` | `(2, 4, 13, 14)` |
+| `STOP_TIMEOUT_MS` | `3000`（仅串口模式） |
 | `MAX_SERIAL_LINE_BYTES` | 256 KB |
 | `MAX_WS_MESSAGE_BYTES` | 512 KB |
+| `MAX_LOG_BUFFER_CHARS` | 4096（串口模式日志残留上限） |
 
 修改默认值时要同步 `src/config.js`、`main.py`、`index.html` 设置表单和 README 中的对应说明。
+
+WiFi 模式目前在 WebSocket 主线程同步执行代码，执行期间不会读取 `stop`，停止按钮由前端看门狗兜底恢复；串口模式仍使用执行线程，支持协作停止与 3 秒超时软复位。
 
 ## 数据流
 
 1. 积木变更 → `workspace/index.js` 监听 → `codegen/preview.js` 生成右侧代码。
 2. 点击 `#runStopBtn` → `ui/toolbar.js` 判断 `conn.running`：空闲时发送 `run`，运行中发送 `stop`；`#quickSaveBtn` 打开现有保存弹窗。
 3. `transport/*` 发送：串口为按行 NDJSON，WiFi 为单帧 JSON。
-4. ESP32 `main.py` 在独立线程 `exec` 代码，回传 `ack / log / done / error`。
+4. ESP32 `main.py` 执行代码：WiFi 模式在 WebSocket 主线程同步 `exec`，串口模式在执行线程 `exec`；回传 `ack / log / done / error`。
 5. `protocol/messages.js` 分发报文，更新日志、`conn.running` 和按钮状态；`ui/log.js` 同步消息条摘要。
 
 积木映射：
@@ -87,7 +90,7 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 | 积木 | 生成代码 | 固件 |
 | --- | --- | --- |
 | `puppet_servo_set` | `servo_set(id, angle)` | 角度裁剪到 0–180 |
-| `puppet_delay` | `puppet_delay(seconds)` | 20ms 分片睡眠，可被停止中断 |
+| `puppet_delay` | `puppet_delay(seconds)` | 20ms 分片睡眠；串口模式可被停止中断，WiFi 同步执行期间不处理 stop |
 | `puppet_action_bow/wave/nod` | `action_bow()` 等 | 空函数，保留 TODO |
 
 ## 通信协议

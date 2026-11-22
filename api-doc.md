@@ -112,7 +112,7 @@
 设备收到后：
 
 1. 立即返回 `ack(stage=received)`；
-2. 在独立线程中调用一次 `exec(code, env)`，**不是逐行 / 逐指令执行**；
+2. 执行代码：WiFi 模式在 WebSocket 主线程同步调用一次 `exec(code, env)`，串口模式在执行线程调用；**不是逐行 / 逐指令执行**；
 3. 返回 `ack(stage=started)`，随后输出 `log`，结束时返回 `done`。
 
 #### 2.3.4 stop（前端 → 设备）
@@ -121,7 +121,7 @@
 { "type": "stop" }
 ```
 
-设备返回 `ack(stage=stopping)`，随后中断执行并返回 `done`（见 5.3）。
+设备返回 `ack(stage=stopping)`；串口模式会中断执行并返回 `done`，WiFi 模式需等当前代码执行结束后才处理 stop（见 5.3）。
 
 #### 2.3.5 ack（设备 → 前端）
 
@@ -134,7 +134,7 @@
 | stage | 含义 |
 | --- | --- |
 | `received` | 代码报文已接收，准备执行 |
-| `started` | 执行线程已启动 |
+| `started` | 设备开始执行代码 |
 | `stopping` | 停止请求已接收，正在中断 |
 
 #### 2.3.6 log（设备 → 前端）
@@ -149,12 +149,12 @@
 
 | level | 含义 | 前端展示 |
 | --- | --- | --- |
-| `print` | 用户代码 `print()` 的一行输出 | 紫色“打印”标签 |
+| `print` | 串口模式下用户代码 `print()` 的一行输出 | 紫色“打印”标签 |
 | `info` | 设备内部状态（开始执行、已停止等） | “设备”标签 |
 | `warn` | 告警（如停止超时、即将软复位） | “警告”标签 |
 | `error` | 运行异常摘要 | “错误”标签 |
 
-说明：异常堆栈通过 `sys.print_exception()` 输出，逐行以 `print` 级别回传；错误摘要本身以 `error` 级别回传。
+说明：错误摘要以 `error` 级别回传。串口模式下异常堆栈通过 `sys.print_exception()` 逐行以 `print` 级别回传；WiFi 模式不替换 stdout，堆栈只输出到 USB 串口，不进入 WebSocket 日志。
 
 #### 2.3.7 done（设备 → 前端）
 
@@ -278,7 +278,7 @@ WiFi 名称 / 密码输入框仅作为本机配置记录与核对，前端不会
 
 ```python
 COMM_MODE = "WIFI_AP"
-AP_SSID = "PuppetRobot"
+AP_SSID = "puppet"
 AP_PASSWORD = "12345678"
 AP_IP = "192.168.4.1"
 WS_PORT = 8080
@@ -286,10 +286,12 @@ WS_PORT = 8080
 
 连接流程：
 
-1. 复位设备，开启热点 `PuppetRobot`（密码 `12345678`）。
+1. 复位设备，等待约 3 秒启动，开启热点 `puppet`（密码 `12345678`）。
 2. 电脑连接该热点。
 3. 前端「设置」→「WiFi AP」，设备 IP 默认 `192.168.4.1`、端口 `8080`。
 4. 点击「连接」，建立 WebSocket 并等待 `ready`。
+
+固件启动时会先等待 3 秒（便于 Thonny / 串口连接），AP 会先关闭再开启，并尝试 `txpower=12`；部分固件不支持该参数时会忽略。
 
 ### 4.3 WebSocket 协议细节
 
@@ -313,7 +315,7 @@ WS_PORT = 8080
 
 ### 5.1 一次性执行
 
-设备在独立线程中执行：
+WiFi 模式在 WebSocket 主线程同步执行，串口模式在执行线程中执行：
 
 ```python
 exec(code, env)
@@ -322,10 +324,11 @@ exec(code, env)
 - `code` 是前端下发的**完整源码字符串**，一次性执行。
 - `env` 仅注入硬件函数：`servo_set`、`puppet_delay`、`action_bow`、`action_wave`、`action_nod`；内置函数（`print` 等）由 MicroPython 提供。
 - 不逐行下发、不逐指令解释、不做代码改写。
+- WiFi 模式同步执行是为了规避 MicroPython 线程栈过小与跨线程 socket 发送失败；代价是执行期间不读取 `stop`，长延时/死循环需要等代码结束或复位设备。
 
 ### 5.2 输出回传
 
-执行期间 `sys.stdout` 被替换为 `_LogStream`，`print()` 的每一行转换为：
+串口模式执行期间 `sys.stdout` 被替换为 `_LogStream`，`print()` 的每一行转换为：
 
 ```json
 { "type": "log", "level": "print", "message": "..." }
@@ -335,26 +338,34 @@ exec(code, env)
 
 没有换行符的残留输出最多保留 4096 字符（`MAX_LOG_BUFFER_CHARS`）；超限时丢弃较早内容并只回传一次 `warn` 日志，避免 `print()` 持续无换行输出耗尽内存。执行结束时的 `drain()` 仍会输出当前残留内容。
 
+WiFi 模式不替换 `sys.stdout`：用户代码的 `print()` 输出到 USB 串口，不进入 WebSocket 日志；固件自身的 `info` / `warn` / `error` 日志仍会回传。
+
 ### 5.3 停止
 
-停止是**协作式中断 + 超时强制恢复**：
+停止行为按通信模式区分：
+
+**串口模式（协作式中断 + 超时强制恢复）**
 
 1. 前端发送 `{ "type": "stop" }`。
-2. 设备置位 `_stop_flag`，返回 `ack(stopping)`。
+2. 串口读取线程置位 `_stop_flag`，返回 `ack(stopping)`。
 3. `puppet_delay()` 每 20 ms 检查一次停止标志；`servo_set()` 在入口检查一次；命中时抛出内部 `_StopRequested`，执行线程退出。
 4. 若 3 秒（`STOP_TIMEOUT_MS`）内执行线程仍未退出（例如用户代码是没有任何延时/舵机调用的死循环），设备执行 `machine.soft_reset()`，强制回到待机状态。
 5. 前端收到 `done` 后恢复「运行」按钮；若 8 秒内仍未收到 `done`（如软复位导致回执丢失），前端看门狗会强制恢复按钮并提示重新连接。
 
+**WiFi 模式（主线程同步执行）**
+
+代码在 WebSocket 会话主线程中同步执行，执行期间不会读取 `stop`。停止指令要等当前代码执行完才会被处理（此时已没有正在执行的代码，只回 `ack(stopping)` 与一条提示）。运行期间的「停止」按钮由前端 8 秒看门狗恢复界面，设备会在代码结束后回到待机；长延时或死循环需要复位设备。
+
 另外，下发 `run` 后若 10 秒内没有收到 `ack(started)`（报文丢失、设备忙或超过长度上限），前端同样会恢复运行按钮并给出警告；若该次执行的 `ack(started)` 在此之后才迟到，前端会忽略它，不会重新进入运行态。
 
-限制说明：MicroPython 无法从外部异步杀死任意 Python 字节码，因此“纯计算死循环”只能靠软复位恢复。软复位后：
+限制说明：MicroPython 无法从外部异步杀死任意 Python 字节码。串口模式下的“纯计算死循环”只能靠软复位恢复；WiFi 模式执行期间无法读取停止指令，需要等待代码结束或手动复位。软复位后：
 
 - WiFi 模式：WebSocket 连接断开，需要重新连接；
 - 串口模式：设备重新运行 `main.py`，串口链路通常保持，可重新握手。
 
 ### 5.4 上电行为
 
-设备上电只做三件事：
+固件上电先等待 3 秒（便于 Thonny / 串口连接），然后初始化通信与硬件。之后只做三件事：
 
 1. 初始化 4 路舵机 PWM（占空比 0，不输出脉冲，不产生动作）；
 2. 初始化所选通信模块；
@@ -420,7 +431,7 @@ servo_set(servo_id, angle)
 
 | 参数 | 类型 | 范围 | 说明 |
 | --- | --- | --- | --- |
-| `servo_id` | int | 1-4 | 对应 `SERVO_PINS = (13, 14, 25, 26)` |
+| `servo_id` | int | 1-4 | 对应 `SERVO_PINS = (2, 4, 13, 14)` |
 | `angle` | number | 0-180 | 自动裁剪到边界 |
 
 底层参数：
@@ -567,12 +578,13 @@ connect() → 等待 ready（或发 hello）
 | `COMM_MODE` | `"WIFI_AP"` | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
 | `WIFI_SSID` | `YOUR_WIFI_SSID` | STA 模式路由器名称 |
 | `WIFI_PASSWORD` | `YOUR_WIFI_PASSWORD` | STA 模式路由器密码 |
-| `AP_SSID` | `PuppetRobot` | AP 热点名称 |
+| `AP_SSID` | `puppet` | AP 热点名称 |
 | `AP_PASSWORD` | `12345678` | AP 热点密码（≥8 位） |
 | `AP_IP` | `192.168.4.1` | AP 模式设备 IP |
 | `WS_PORT` | `8080` | WebSocket 端口 |
-| `SERVO_PINS` | `(13, 14, 25, 26)` | 4 路舵机 GPIO |
-| `STOP_TIMEOUT_MS` | `3000` | 停止超时后软复位 |
+| `SERVO_PINS` | `(2, 4, 13, 14)` | 4 路舵机 GPIO |
+| `STOP_TIMEOUT_MS` | `3000` | 串口模式停止超时后软复位 |
+| `MAX_LOG_BUFFER_CHARS` | `4096` | 串口模式无换行日志残留上限 |
 
 切换通信模式：修改 `COMM_MODE` → 保存 `main.py` → 复位设备。前端设置中的 WiFi 名称/密码不会写入设备。
 
@@ -581,7 +593,8 @@ connect() → 等待 ready（或发 hello）
 ## 10. 已知限制
 
 1. **Web Serial 浏览器支持**：仅 Chromium 系浏览器；不支持时请使用 WiFi STA / AP。
-2. **停止的强制恢复**：如 5.3 所述，纯计算死循环依赖软复位；软复位会中断 WiFi 连接。
+2. **停止的强制恢复**：串口模式纯计算死循环依赖软复位，软复位会中断 WiFi 连接；WiFi 模式执行期间不处理 stop，前端只恢复按钮，设备需等待代码结束或手动复位。
 3. **单客户端**：WiFi WebSocket 服务同时间只接受一个客户端，便于皮影机器人单操作者场景。
 4. **无云端 / 无账号 / 无多设备管理**：本工具按需求边界未实现这些能力。
 5. **舵机供电**：4 路舵机应使用独立电源并共地，ESP32 仅提供信号；本工具不涉及电源管理。
+6. **WiFi 模式 print 不进入前端日志**：用户代码的 `print()` 输出到 USB 串口，不进入 WebSocket 日志；固件协议日志仍会回传。

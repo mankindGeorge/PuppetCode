@@ -19,6 +19,6 @@ export const DEFAULTS = {
   staPassword: '',
   apIp: '192.168.4.1',
   apPort: 8080,
-  apSsid: 'PuppetRobot',
+  apSsid: 'puppet',
   apPassword: '12345678'
 };
