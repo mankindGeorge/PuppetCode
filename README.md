@@ -20,7 +20,6 @@ Windows 10 / 11（x64）：
 - USB 串口：NDJSON，一行一条 JSON，默认 115200；需 Chromium 系浏览器或 Electron
 - WiFi AP / 蓝牙 BLE：共用一套 JSON 报文。AP 走 WebSocket（默认端口 8080），BLE 走 Web Bluetooth GATT；固件同时开启两者
 - WiFi AP 模式代码在主线程同步执行，执行期间不处理停止指令；蓝牙模式由 BLE IRQ 置停止标志
-- BLE 仅 Chrome / Edge 桌面、Android Chrome 与 Electron 支持，iOS Safari 不支持
 - UTF-8 编码，协议版本 1.0
 - 消息类型：`hello`、`ready`、`run`、`stop`、`ack`、`log`、`done`、`error`
 - 报文只增不改；未知字段和未知类型忽略；串口单行 256 KB、WebSocket 单条 512 KB

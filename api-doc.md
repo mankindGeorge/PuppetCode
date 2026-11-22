@@ -262,7 +262,7 @@
 
 前端使用 Web Bluetooth `requestDevice` → GATT 连接 → 获取 RX/TX 特征值；发送时把 `JSON + "\n"` 按默认 20 字节分片写入 RX，接收时订阅 TX 通知并按 `\n` 重组。默认 MTU 23（20 字节负载），协商更大 MTU 时固件按 `mtu-3` 分片。BLE 同一时间只服务一个中心设备。
 
-支持范围：Chrome / Edge 桌面、Android Chrome、Electron；**iOS Safari 不支持 Web Bluetooth**。Electron 主进程处理 `select-bluetooth-device` 并允许 `bluetooth` 权限。
+Electron 主进程处理 `select-bluetooth-device` 并允许 `bluetooth` 权限。
 
 BLE 与 WiFi AP 同时开启，共用同一套 JSON 报文；前端可任选一种连接。两个通道同时连接时，`_running` 保证同一时间只执行一段代码，建议只让一个通道发起运行。
 
@@ -593,7 +593,7 @@ connect() → 等待 ready（或发 hello）
 
 ## 10. 已知限制
 
-1. **Web Serial / Web Bluetooth 浏览器支持**：仅 Chromium 系浏览器；Web Serial 不支持时请使用 WiFi AP / BLE，Web Bluetooth 不支持时（如 iOS Safari）请使用 WiFi AP。
+1. **Web Serial 浏览器支持**：仅 Chromium 系浏览器；不支持时请使用 WiFi AP / BLE。
 2. **停止的强制恢复**：串口模式纯计算死循环依赖软复位，软复位会中断 WiFi 连接；WiFi AP 模式执行期间不处理 stop，BLE 模式只能依赖协作检查，两者都需要等待代码结束或手动复位。
 3. **单客户端**：WiFi WebSocket 与 BLE 各自同一时间只服务一个客户端，便于皮影机器人单操作者场景；两个通道同时连接时由 `_running` 串行化执行。
 4. **无云端 / 无账号 / 无多设备管理**：本工具按需求边界未实现这些能力。

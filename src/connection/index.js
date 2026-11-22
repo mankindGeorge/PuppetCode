@@ -55,7 +55,7 @@ export async function connectDevice() {
     return;
   }
   if (mode === 'ble' && !('bluetooth' in navigator)) {
-    addLog('error', '当前浏览器不支持蓝牙，请使用 Chrome / Edge 桌面或 Android Chrome');
+    addLog('error', '当前环境不支持蓝牙，请使用桌面版 PuppetCode（或 Chrome / Edge）');
     setModalStatus('浏览器不支持蓝牙', 'err');
     return;
   }

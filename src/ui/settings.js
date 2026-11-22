@@ -47,10 +47,10 @@ export function syncSettingsUI() {
   if (bleHint) {
     if (!('bluetooth' in navigator)) {
       bleHint.classList.add('warn');
-      bleHint.textContent = '当前浏览器不支持蓝牙，请用 Chrome / Edge 桌面或 Android Chrome；iOS 不支持 Web Bluetooth。';
+      bleHint.textContent = '当前环境不支持蓝牙，请使用桌面版 PuppetCode（或 Chrome / Edge）。';
     } else {
       bleHint.classList.remove('warn');
-      bleHint.textContent = '点「连接」后，浏览器会弹出蓝牙设备选择；请选择设备 puppet。首次使用可能需要系统蓝牙权限。';
+      bleHint.textContent = '点「连接」后，软件会弹出蓝牙设备选择；请选择设备 puppet。首次使用可能需要系统蓝牙权限。';
     }
   }
 }

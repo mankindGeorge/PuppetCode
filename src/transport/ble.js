@@ -1,5 +1,5 @@
 // 蓝牙 BLE 通信（Web Bluetooth）：Nordic UART 风格服务，JSON 按行分片收发。
-// 仅 Chrome / Edge 桌面、Android Chrome 与 Electron 支持；iOS Safari 不支持。
+// 桌面版由 Electron 主进程处理蓝牙设备选择。
 import { Transport } from './base.js';
 
 const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -22,7 +22,7 @@ export class BleTransport extends Transport {
   connect() {
     var self = this;
     if (!('bluetooth' in navigator)) {
-      return Promise.reject(new Error('当前浏览器不支持蓝牙，请使用 Chrome / Edge 桌面或 Android Chrome'));
+      return Promise.reject(new Error('当前环境不支持蓝牙，请使用桌面版 PuppetCode（或 Chrome / Edge）'));
     }
 
     this.manualClose = false;

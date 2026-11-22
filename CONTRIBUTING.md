@@ -76,7 +76,7 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 
 修改默认值时要同步 `src/config.js`、`main.py`、`index.html` 设置表单和 README 中的对应说明。
 
-`COMM_MODE` 仅保留 `SERIAL` / `WIFI_AP`；`WIFI_AP` 模式会同时启动 AP 与 BLE。Web Bluetooth 仅在 Chrome / Edge 桌面、Android Chrome 与 Electron 可用，Electron 主进程负责 `select-bluetooth-device`。
+`COMM_MODE` 仅保留 `SERIAL` / `WIFI_AP`；`WIFI_AP` 模式会同时启动 AP 与 BLE。Electron 主进程负责 `select-bluetooth-device`。
 
 WiFi AP 模式在 WebSocket 主线程同步执行代码，执行期间不会读取 `stop`，停止按钮由前端看门狗兜底恢复；BLE 在独立 worker 中执行，`stop` 可由 BLE IRQ 置标志中断；串口模式仍使用执行线程，支持协作停止与 3 秒超时软复位。
 
