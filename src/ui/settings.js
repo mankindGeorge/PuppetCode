@@ -11,10 +11,6 @@ function readPort(id, fallback) {
 
 export function readSettingsUI() {
   settings.baudRate = parseInt(document.getElementById('baudRate').value, 10) || 115200;
-  settings.staIp = document.getElementById('staIp').value.trim();
-  settings.staPort = readPort('staPort', DEFAULTS.staPort);
-  settings.staSsid = document.getElementById('staSsid').value.trim();
-  settings.staPassword = document.getElementById('staPassword').value;
   settings.apIp = document.getElementById('apIp').value.trim();
   settings.apPort = readPort('apPort', DEFAULTS.apPort);
   settings.apSsid = document.getElementById('apSsid').value.trim();
@@ -23,10 +19,6 @@ export function readSettingsUI() {
 
 export function syncSettingsUI() {
   document.getElementById('baudRate').value = String(settings.baudRate);
-  document.getElementById('staIp').value = settings.staIp;
-  document.getElementById('staPort').value = String(settings.staPort);
-  document.getElementById('staSsid').value = settings.staSsid;
-  document.getElementById('staPassword').value = settings.staPassword;
   document.getElementById('apIp').value = settings.apIp;
   document.getElementById('apPort').value = String(settings.apPort);
   document.getElementById('apSsid').value = settings.apSsid;
@@ -45,10 +37,21 @@ export function syncSettingsUI() {
   var serialHint = document.getElementById('serialHint');
   if (!('serial' in navigator)) {
     serialHint.classList.add('warn');
-    serialHint.textContent = '这个浏览器不能直接连接 USB，请用 Chrome / Edge 打开，或改用 WiFi 模式。';
+    serialHint.textContent = '这个浏览器不能直接连接 USB，请用 Chrome / Edge 打开，或改用 WiFi / 蓝牙模式。';
   } else {
     serialHint.classList.remove('warn');
     serialHint.textContent = '点「连接」后，浏览器会让你选择串口。机器人会重启一次，等两秒就好。';
+  }
+
+  var bleHint = document.getElementById('bleHint');
+  if (bleHint) {
+    if (!('bluetooth' in navigator)) {
+      bleHint.classList.add('warn');
+      bleHint.textContent = '当前浏览器不支持蓝牙，请用 Chrome / Edge 桌面或 Android Chrome；iOS 不支持 Web Bluetooth。';
+    } else {
+      bleHint.classList.remove('warn');
+      bleHint.textContent = '点「连接」后，浏览器会弹出蓝牙设备选择；请选择设备 puppet。首次使用可能需要系统蓝牙权限。';
+    }
   }
 }
 

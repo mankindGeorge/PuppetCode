@@ -177,8 +177,8 @@
     <div class="modal-body">
       <div class="segmented" id="modeTabs" role="tablist" aria-label="通信模式">
         <button type="button" data-mode="serial" role="tab">USB 串口</button>
-        <button type="button" data-mode="sta" role="tab">WiFi STA</button>
         <button type="button" data-mode="ap" role="tab">WiFi AP</button>
+        <button type="button" data-mode="ble" role="tab">蓝牙</button>
       </div>
 
       <div class="mode-pane" data-pane="serial">
@@ -196,28 +196,6 @@
           </div>
         </div>
         <p class="hint" id="serialHint">点「连接」后，浏览器会让你选择串口。机器人会重启一次，等两秒就好。</p>
-      </div>
-
-      <div class="mode-pane" data-pane="sta" hidden>
-        <div class="field-grid">
-          <div class="field">
-            <label for="staIp">设备 IP</label>
-            <input id="staIp" type="text" inputmode="decimal" placeholder="192.168.1.50" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="staPort">端口</label>
-            <input id="staPort" type="number" min="1" max="65535" step="1" value="8080">
-          </div>
-          <div class="field">
-            <label for="staSsid">WiFi 名称（参考）</label>
-            <input id="staSsid" type="text" placeholder="YOUR_WIFI_SSID" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="staPassword">WiFi 密码（参考）</label>
-            <input id="staPassword" type="password" placeholder="与固件常量一致" autocomplete="off">
-          </div>
-        </div>
-        <p class="hint">电脑和机器人要连在同一个 WiFi 下。名称和密码只保存在本机，用来核对设置。</p>
       </div>
 
       <div class="mode-pane" data-pane="ap" hidden>
@@ -240,6 +218,11 @@
           </div>
         </div>
         <p class="hint">先让电脑连上机器人发出的热点，再用上面的地址连接。</p>
+      </div>
+
+      <div class="mode-pane" data-pane="ble" hidden>
+        <p class="hint" id="bleHint">点「连接」后，浏览器会弹出蓝牙设备选择；请选择设备 puppet。</p>
+        <p class="hint">蓝牙与 WiFi AP 会同时开启，可任选一种连接。支持 Windows / Android 的 Chrome / Edge，iOS 不支持 Web Bluetooth。</p>
       </div>
 
       <div class="modal-state">
@@ -296,7 +279,7 @@
 
     <div class="modal-body">
       <p class="hint">把积木拖进编辑区，右侧会实时生成 MicroPython 代码；连接机器人后点「运行」即可下发执行。</p>
-      <p class="hint">支持 USB 串口、WiFi STA、WiFi AP 三种连接方式，可在「设置」里切换。</p>
+      <p class="hint">支持 USB 串口、WiFi AP、蓝牙三种连接方式，可在「设置」里切换；WiFi AP 与蓝牙会同时开启。</p>
       <p class="hint">积木工程保存在「文档\PuppetCode」，也可以用「文件 → 打开」载入已有的 .xml 工程。</p>
       <p class="hint">版本 1.0.1</p>
     </div>

@@ -6,7 +6,7 @@
 
 - 硬件固定为 4 路舵机，不新增其他传感器、电机或外设。
 - 固件只使用 MicroPython 内置模块；前端使用官方 Blockly 11.2.2，不引入第三方 Blockly for MicroPython。
-- USB 串口、WiFi STA、WiFi AP 共用同一套 JSON 报文与上层逻辑，差异只在 `src/transport/`。
+- USB 串口、WiFi AP、蓝牙 BLE 共用同一套 JSON 报文与上层逻辑，差异只在 `src/transport/`。固件在 `WIFI_AP` 模式下同时开启 AP 与 BLE。
 - 组合动作积木保持可见并标注「开发中」，生成空函数调用。
 - 前端默认参数（`src/config.js`）、固件常量（`main.py`）和设置表单默认值必须一致。
 
@@ -22,7 +22,7 @@ src/
   workspace/          index.js 工作区；stage.js 首屏引导与示例
                       canvasTools.js 撤销/重做/缩放/看全图
                       toolboxPanel.js 分类按钮与图标；sprites.js 内联补丁与垃圾桶缩放
-  transport/          base.js 抽象、serial.js 串口、websocket.js WiFi、index.js 工厂
+  transport/          base.js 抽象、serial.js 串口、websocket.js WiFi、ble.js 蓝牙、index.js 工厂
   protocol/           messages.js 设备报文分发
   connection/         index.js 连接/运行/停止；probe.js 握手；watchdog.js 回执兜底
   ui/                 toolbar.js 标题栏按钮、log.js 消息条、status.js 状态
@@ -62,10 +62,11 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 
 | 常量 | 默认值 |
 | --- | --- |
-| `COMM_MODE` | `"WIFI_AP"` |
-| `WIFI_SSID` / `WIFI_PASSWORD` | 占位常量，按实际网络修改 |
+| `COMM_MODE` | `"WIFI_AP"`（AP + BLE 同时开启） |
 | `AP_SSID` / `AP_PASSWORD` | `puppet` / `12345678` |
 | `AP_IP` / `WS_PORT` | `192.168.4.1` / `8080` |
+| `BLE_ENABLED` / `BLE_NAME` | `True` / `puppet` |
+| `BLE_SERVICE_UUID` / `BLE_RX_UUID` / `BLE_TX_UUID` | NUS 风格 128 位 UUID，见 `main.py` / api-doc |
 | `PROTOCOL_VERSION` | `"1.0"` |
 | `SERVO_PINS` | `(2, 4, 13, 14)` |
 | `STOP_TIMEOUT_MS` | `3000`（仅串口模式） |
@@ -75,14 +76,16 @@ README.md             用户入口：介绍、下载、协议概览、Fork/PR
 
 修改默认值时要同步 `src/config.js`、`main.py`、`index.html` 设置表单和 README 中的对应说明。
 
-WiFi 模式目前在 WebSocket 主线程同步执行代码，执行期间不会读取 `stop`，停止按钮由前端看门狗兜底恢复；串口模式仍使用执行线程，支持协作停止与 3 秒超时软复位。
+`COMM_MODE` 仅保留 `SERIAL` / `WIFI_AP`；`WIFI_AP` 模式会同时启动 AP 与 BLE。Web Bluetooth 仅在 Chrome / Edge 桌面、Android Chrome 与 Electron 可用，Electron 主进程负责 `select-bluetooth-device`。
+
+WiFi AP 模式在 WebSocket 主线程同步执行代码，执行期间不会读取 `stop`，停止按钮由前端看门狗兜底恢复；BLE 在独立 worker 中执行，`stop` 可由 BLE IRQ 置标志中断；串口模式仍使用执行线程，支持协作停止与 3 秒超时软复位。
 
 ## 数据流
 
 1. 积木变更 → `workspace/index.js` 监听 → `codegen/preview.js` 生成右侧代码。
 2. 点击 `#runStopBtn` → `ui/toolbar.js` 判断 `conn.running`：空闲时发送 `run`，运行中发送 `stop`；`#quickSaveBtn` 打开现有保存弹窗。
-3. `transport/*` 发送：串口为按行 NDJSON，WiFi 为单帧 JSON。
-4. ESP32 `main.py` 执行代码：WiFi 模式在 WebSocket 主线程同步 `exec`，串口模式在执行线程 `exec`；回传 `ack / log / done / error`。
+3. `transport/*` 发送：串口为按行 NDJSON，WiFi 为单帧 JSON，BLE 为 JSON+换行并按 20 字节分片。
+4. ESP32 `main.py` 执行代码：WiFi AP 在 WebSocket 主线程同步 `exec`，BLE 在 BLE worker 同步 `exec`，串口在执行线程 `exec`；回传 `ack / log / done / error`。
 5. `protocol/messages.js` 分发报文，更新日志、`conn.running` 和按钮状态；`ui/log.js` 同步消息条摘要。
 
 积木映射：
@@ -90,12 +93,12 @@ WiFi 模式目前在 WebSocket 主线程同步执行代码，执行期间不会�
 | 积木 | 生成代码 | 固件 |
 | --- | --- | --- |
 | `puppet_servo_set` | `servo_set(id, angle)` | 角度裁剪到 0–180 |
-| `puppet_delay` | `puppet_delay(seconds)` | 20ms 分片睡眠；串口模式可被停止中断，WiFi 同步执行期间不处理 stop |
+| `puppet_delay` | `puppet_delay(seconds)` | 20ms 分片睡眠；串口/BLE 可被停止中断，WiFi AP 同步执行期间不处理 stop |
 | `puppet_action_bow/wave/nod` | `action_bow()` 等 | 空函数，保留 TODO |
 
 ## 通信协议
 
-- UTF-8 JSON；串口 NDJSON，WiFi WebSocket 单帧；协议版本 1.0。
+- UTF-8 JSON；串口 NDJSON，WiFi WebSocket 单帧，BLE JSON+换行分片；协议版本 1.0。
 - 消息：`hello`、`ready`、`run`、`stop`、`ack`、`log`、`done`、`error`。
 - 只增不改：未知字段和未知类型忽略，不得断连。
 - 串口单行 256 KB、WS 单条 512 KB；超限回传 `error`。

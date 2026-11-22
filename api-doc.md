@@ -19,11 +19,11 @@
 └──────────────────────────────┘        ack / log / done   └──────────────────────────┘
         │                                                              ▲
         ├── USB 串口（Web Serial，换行分隔 JSON）                       │
-        ├── WiFi STA（WebSocket，ws://设备IP:8080）                     │
-        └── WiFi AP （WebSocket，ws://192.168.4.1:8080）                 │
+        ├── WiFi AP （WebSocket，ws://192.168.4.1:8080）                 │
+        └── 蓝牙 BLE（Web Bluetooth GATT，JSON+换行分片）                 │
 ```
 
-三种通信方式共用同一套上层逻辑：
+三种通信方式共用同一套上层逻辑；固件在 `WIFI_AP` 模式下**同时开启 WiFi AP 与 BLE**：
 
 - 代码下发：`run`
 - 停止执行：`stop`
@@ -41,8 +41,8 @@
 | 通信方式 | 封装方式 | 编码 | 分隔 |
 | --- | --- | --- | --- |
 | USB 串口 | NDJSON：一条 JSON 占一行 | UTF-8 | `\n`（容忍 `\r\n`） |
-| WiFi STA | WebSocket 文本帧，一帧一条 JSON | UTF-8 | 无需分隔符；多行文本也可按行解析 |
-| WiFi AP | 同 WiFi STA | UTF-8 | 同上 |
+| WiFi AP | WebSocket 文本帧，一帧一条 JSON | UTF-8 | 无需分隔符；多行文本也可按行解析 |
+| 蓝牙 BLE | GATT 分片：JSON + `\n`，默认 20 字节/片 | UTF-8 | `\n`（接收端按行重组） |
 
 约定：
 
@@ -76,7 +76,7 @@
 }
 ```
 
-- 仅 USB 串口模式需要主动发送；WiFi 模式设备在连接建立后立即推送 `ready`。
+- 仅 USB 串口模式需要主动发送；WiFi AP / BLE 模式设备在连接建立后立即推送 `ready`。
 - 前端在串口打开后约 1.2 秒发送第 1 次，随后每 1.5 秒重试，最多 3 次。
 
 #### 2.3.2 ready（设备 → 前端）
@@ -91,7 +91,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `mode` | string | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
+| `mode` | string | `SERIAL` / `WIFI_AP`（`WIFI_AP` 同时开启 BLE） |
 | `protocol` | string | 协议版本，当前为 `1.0` |
 
 #### 2.3.3 run（前端 → 设备）
@@ -112,7 +112,7 @@
 设备收到后：
 
 1. 立即返回 `ack(stage=received)`；
-2. 执行代码：WiFi 模式在 WebSocket 主线程同步调用一次 `exec(code, env)`，串口模式在执行线程调用；**不是逐行 / 逐指令执行**；
+2. 执行代码：WiFi AP 模式在 WebSocket 主线程同步调用一次 `exec(code, env)`，BLE 在 BLE worker 中同步执行，串口模式在执行线程调用；**不是逐行 / 逐指令执行**；
 3. 返回 `ack(stage=started)`，随后输出 `log`，结束时返回 `done`。
 
 #### 2.3.4 stop（前端 → 设备）
@@ -121,7 +121,7 @@
 { "type": "stop" }
 ```
 
-设备返回 `ack(stage=stopping)`；串口模式会中断执行并返回 `done`，WiFi 模式需等当前代码执行结束后才处理 stop（见 5.3）。
+设备返回 `ack(stage=stopping)`；串口模式会中断执行并返回 `done`，BLE 模式由 IRQ 置停止标志，WiFi AP 模式需等当前代码执行结束后才处理 stop（见 5.3）。
 
 #### 2.3.5 ack（设备 → 前端）
 
@@ -154,7 +154,7 @@
 | `warn` | 告警（如停止超时、即将软复位） | “警告”标签 |
 | `error` | 运行异常摘要 | “错误”标签 |
 
-说明：错误摘要以 `error` 级别回传。串口模式下异常堆栈通过 `sys.print_exception()` 逐行以 `print` 级别回传；WiFi 模式不替换 stdout，堆栈只输出到 USB 串口，不进入 WebSocket 日志。
+说明：错误摘要以 `error` 级别回传。串口模式下异常堆栈通过 `sys.print_exception()` 逐行以 `print` 级别回传；WiFi AP 与 BLE 模式不替换 stdout，堆栈只输出到 USB 串口，不进入无线日志。
 
 #### 2.3.7 done（设备 → 前端）
 
@@ -242,37 +242,31 @@
 
 ### 3.2 注意事项
 
-- Web Serial 仅 Chrome / Edge 支持；不支持时前端会提示，可改用 WiFi 模式。
+- Web Serial 仅 Chrome / Edge 支持；不支持时前端会提示，可改用 WiFi AP / 蓝牙模式。
 - 部分 ESP32 开发板在打开串口时会因 DTR/RTS 自动复位，因此前端不会在打开瞬间下发代码，而是等待约 1.2 秒并重试握手。
 - 串口同时承载 REPL 与协议报文；设备启动阶段的非 JSON 文本会在前端日志中显示为“设备原始输出”。
 - 串口与 WebSocket 的 JSON 结构完全一致，方便后续 APP 复用。
 
 ---
 
-## 4. WiFi 模式
+## 4. WiFi AP 与蓝牙 BLE
 
-### 4.1 WiFi STA（设备连接路由器）
+### 4.1 蓝牙 BLE（Web Bluetooth）
 
-固件配置（`main.py` 顶部）：
+固件在 `WIFI_AP` 模式下同时启动 BLE，不单独提供 BLE-only 模式。
 
-```python
-COMM_MODE = "WIFI_STA"
-WIFI_SSID = "YOUR_WIFI_SSID"
-WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
-WS_PORT = 8080
-```
+- 设备名：`puppet`
+- 服务（NUS 风格）：`6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
+- RX（写入）：`6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+- TX（通知）：`6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
 
-连接流程：
+前端使用 Web Bluetooth `requestDevice` → GATT 连接 → 获取 RX/TX 特征值；发送时把 `JSON + "\n"` 按默认 20 字节分片写入 RX，接收时订阅 TX 通知并按 `\n` 重组。默认 MTU 23（20 字节负载），协商更大 MTU 时固件按 `mtu-3` 分片。BLE 同一时间只服务一个中心设备。
 
-1. 烧录固件并复位，设备自动连接路由器；若 30 秒未连上会持续重试。
-2. 通过 USB 串口监视器（可选）查看设备打印的 IP；也可在路由器后台查询。
-3. 前端「设置」→「WiFi STA」，填写设备 IP 与端口（默认 8080）。
-4. 点击「连接」，浏览器建立 `ws://<设备IP>:<端口>`。
-5. 设备完成 WebSocket 握手后立即推送 `ready`。
+支持范围：Chrome / Edge 桌面、Android Chrome、Electron；**iOS Safari 不支持 Web Bluetooth**。Electron 主进程处理 `select-bluetooth-device` 并允许 `bluetooth` 权限。
 
-WiFi 名称 / 密码输入框仅作为本机配置记录与核对，前端不会向设备下发 WiFi 配置；修改网络必须改固件常量。
+BLE 与 WiFi AP 同时开启，共用同一套 JSON 报文；前端可任选一种连接。两个通道同时连接时，`_running` 保证同一时间只执行一段代码，建议只让一个通道发起运行。
 
-### 4.2 WiFi AP（设备创建热点）
+### 4.2 WiFi AP（设备创建热点，同时开启 BLE）
 
 固件配置：
 
@@ -282,12 +276,14 @@ AP_SSID = "puppet"
 AP_PASSWORD = "12345678"
 AP_IP = "192.168.4.1"
 WS_PORT = 8080
+BLE_ENABLED = True
+BLE_NAME = "puppet"
 ```
 
 连接流程：
 
-1. 复位设备，等待约 3 秒启动，开启热点 `puppet`（密码 `12345678`）。
-2. 电脑连接该热点。
+1. 复位设备，等待约 3 秒启动，开启热点 `puppet`（密码 `12345678`）与 BLE 设备 `puppet`。
+2. 电脑连接该热点，或在前端选择「蓝牙」连接 BLE。
 3. 前端「设置」→「WiFi AP」，设备 IP 默认 `192.168.4.1`、端口 `8080`。
 4. 点击「连接」，建立 WebSocket 并等待 `ready`。
 
@@ -315,7 +311,7 @@ WS_PORT = 8080
 
 ### 5.1 一次性执行
 
-WiFi 模式在 WebSocket 主线程同步执行，串口模式在执行线程中执行：
+WiFi AP 模式在 WebSocket 主线程同步执行，BLE 在 BLE worker 中同步执行，串口模式在执行线程中执行：
 
 ```python
 exec(code, env)
@@ -324,7 +320,7 @@ exec(code, env)
 - `code` 是前端下发的**完整源码字符串**，一次性执行。
 - `env` 仅注入硬件函数：`servo_set`、`puppet_delay`、`action_bow`、`action_wave`、`action_nod`；内置函数（`print` 等）由 MicroPython 提供。
 - 不逐行下发、不逐指令解释、不做代码改写。
-- WiFi 模式同步执行是为了规避 MicroPython 线程栈过小与跨线程 socket 发送失败；代价是执行期间不读取 `stop`，长延时/死循环需要等代码结束或复位设备。
+- WiFi AP 与 BLE 均为同步执行，避免 MicroPython 线程栈过小与跨线程 socket 发送失败；`_running` 保证两个通道不会并发执行。长延时/死循环需要等代码结束或复位设备。
 
 ### 5.2 输出回传
 
@@ -338,7 +334,7 @@ exec(code, env)
 
 没有换行符的残留输出最多保留 4096 字符（`MAX_LOG_BUFFER_CHARS`）；超限时丢弃较早内容并只回传一次 `warn` 日志，避免 `print()` 持续无换行输出耗尽内存。执行结束时的 `drain()` 仍会输出当前残留内容。
 
-WiFi 模式不替换 `sys.stdout`：用户代码的 `print()` 输出到 USB 串口，不进入 WebSocket 日志；固件自身的 `info` / `warn` / `error` 日志仍会回传。
+WiFi AP 与 BLE 模式不替换 `sys.stdout`：用户代码的 `print()` 输出到 USB 串口，不进入无线日志；固件自身的 `info` / `warn` / `error` 日志仍会回传。
 
 ### 5.3 停止
 
@@ -352,15 +348,19 @@ WiFi 模式不替换 `sys.stdout`：用户代码的 `print()` 输出到 USB 串�
 4. 若 3 秒（`STOP_TIMEOUT_MS`）内执行线程仍未退出（例如用户代码是没有任何延时/舵机调用的死循环），设备执行 `machine.soft_reset()`，强制回到待机状态。
 5. 前端收到 `done` 后恢复「运行」按钮；若 8 秒内仍未收到 `done`（如软复位导致回执丢失），前端看门狗会强制恢复按钮并提示重新连接。
 
-**WiFi 模式（主线程同步执行）**
+**WiFi AP 模式（主线程同步执行）**
 
 代码在 WebSocket 会话主线程中同步执行，执行期间不会读取 `stop`。停止指令要等当前代码执行完才会被处理（此时已没有正在执行的代码，只回 `ack(stopping)` 与一条提示）。运行期间的「停止」按钮由前端 8 秒看门狗恢复界面，设备会在代码结束后回到待机；长延时或死循环需要复位设备。
 
+**蓝牙 BLE 模式（BLE worker）**
+
+代码在 BLE worker 线程中同步执行。BLE IRQ 收到 `{"type":"stop"}` 会立即置位 `_stop_flag`，`puppet_delay()` / `servo_set()` 命中后抛出 `_StopRequested`，执行线程退出并回 `done(reason=stopped)`；停止报文本身会在执行结束后再被 worker 处理一次，只回 `ack(stopping)` 与提示。纯计算死循环仍无法中断，需要复位设备。
+
 另外，下发 `run` 后若 10 秒内没有收到 `ack(started)`（报文丢失、设备忙或超过长度上限），前端同样会恢复运行按钮并给出警告；若该次执行的 `ack(started)` 在此之后才迟到，前端会忽略它，不会重新进入运行态。
 
-限制说明：MicroPython 无法从外部异步杀死任意 Python 字节码。串口模式下的“纯计算死循环”只能靠软复位恢复；WiFi 模式执行期间无法读取停止指令，需要等待代码结束或手动复位。软复位后：
+限制说明：MicroPython 无法从外部异步杀死任意 Python 字节码。串口模式下的“纯计算死循环”只能靠软复位恢复；WiFi AP 模式执行期间无法读取停止指令，BLE 模式只能依赖协作检查，两者都需要等待代码结束或手动复位。软复位后：
 
-- WiFi 模式：WebSocket 连接断开，需要重新连接；
+- WiFi AP / BLE：连接断开，需要重新连接；
 - 串口模式：设备重新运行 `main.py`，串口链路通常保持，可重新握手。
 
 ### 5.4 上电行为
@@ -368,7 +368,7 @@ WiFi 模式不替换 `sys.stdout`：用户代码的 `print()` 输出到 USB 串�
 固件上电先等待 3 秒（便于 Thonny / 串口连接），然后初始化通信与硬件。之后只做三件事：
 
 1. 初始化 4 路舵机 PWM（占空比 0，不输出脉冲，不产生动作）；
-2. 初始化所选通信模块；
+2. 初始化所选通信模块（`WIFI_AP` 时同时开启 AP 与 BLE）；
 3. 等待前端指令。
 
 **不会自动执行任何积木或动作。**
@@ -522,7 +522,7 @@ Blockly.Python.forBlock['puppet_action_turn'] = function () {
 class MyTransport extends Transport {
   connect(config) { /* 建立连接，并 emitStatus('connected', 描述) */ }
   disconnect() { /* 关闭连接，并 emitStatus('disconnected', '') */ }
-  send(message) { /* 发送一条 JSON；串口需补 '\n'，WebSocket 直接文本帧 */ }
+  send(message) { /* 发送一条 JSON；串口补 '\n'，WebSocket 文本帧，BLE JSON+'\n' 分片 */ }
 }
 ```
 
@@ -554,9 +554,9 @@ class MyTransport extends Transport {
 
 通信层与网页没有强绑定，APP 可按以下方式复用：
 
-1. **WiFi 模式**：直接实现 WebSocket 客户端，发送/接收同样的 JSON 文本帧。
+1. **WiFi AP / BLE 模式**：直接实现 WebSocket 或 BLE GATT 客户端，发送/接收同样的 JSON 报文。
 2. **USB / OTG 模式**：按 NDJSON 发送（每条 JSON + `\n`），波特率与固件一致。
-3. **未来蓝牙等新链路**：在 APP 内实现 `Transport` 等价层即可，无需改变设备协议。
+3. **其他新链路**：在 APP 内实现 `Transport` 等价层即可，无需改变设备协议；BLE 已作为 `src/transport/ble.js` 实现。
 
 APP 最小接入流程：
 
@@ -575,26 +575,28 @@ connect() → 等待 ready（或发 hello）
 
 | 常量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `COMM_MODE` | `"WIFI_AP"` | `SERIAL` / `WIFI_STA` / `WIFI_AP` |
-| `WIFI_SSID` | `YOUR_WIFI_SSID` | STA 模式路由器名称 |
-| `WIFI_PASSWORD` | `YOUR_WIFI_PASSWORD` | STA 模式路由器密码 |
+| `COMM_MODE` | `"WIFI_AP"` | `SERIAL` / `WIFI_AP`（AP 与 BLE 同时开启） |
 | `AP_SSID` | `puppet` | AP 热点名称 |
 | `AP_PASSWORD` | `12345678` | AP 热点密码（≥8 位） |
 | `AP_IP` | `192.168.4.1` | AP 模式设备 IP |
 | `WS_PORT` | `8080` | WebSocket 端口 |
+| `BLE_ENABLED` | `True` | 是否同时开启 BLE |
+| `BLE_NAME` | `puppet` | BLE 设备名 |
+| `BLE_SERVICE_UUID` / `BLE_RX_UUID` / `BLE_TX_UUID` | NUS 风格 128 位 UUID | 见 `main.py`；RX 写入、TX 通知 |
 | `SERVO_PINS` | `(2, 4, 13, 14)` | 4 路舵机 GPIO |
 | `STOP_TIMEOUT_MS` | `3000` | 串口模式停止超时后软复位 |
 | `MAX_LOG_BUFFER_CHARS` | `4096` | 串口模式无换行日志残留上限 |
 
-切换通信模式：修改 `COMM_MODE` → 保存 `main.py` → 复位设备。前端设置中的 WiFi 名称/密码不会写入设备。
+切换通信模式：修改 `COMM_MODE` → 保存 `main.py` → 复位设备。`WIFI_AP` 模式同时开启 AP 与 BLE，前端可选择任一种连接；`SERIAL` 模式关闭无线。前端设置中的 WiFi 名称/密码不会写入设备。
 
 ---
 
 ## 10. 已知限制
 
-1. **Web Serial 浏览器支持**：仅 Chromium 系浏览器；不支持时请使用 WiFi STA / AP。
-2. **停止的强制恢复**：串口模式纯计算死循环依赖软复位，软复位会中断 WiFi 连接；WiFi 模式执行期间不处理 stop，前端只恢复按钮，设备需等待代码结束或手动复位。
-3. **单客户端**：WiFi WebSocket 服务同时间只接受一个客户端，便于皮影机器人单操作者场景。
+1. **Web Serial / Web Bluetooth 浏览器支持**：仅 Chromium 系浏览器；Web Serial 不支持时请使用 WiFi AP / BLE，Web Bluetooth 不支持时（如 iOS Safari）请使用 WiFi AP。
+2. **停止的强制恢复**：串口模式纯计算死循环依赖软复位，软复位会中断 WiFi 连接；WiFi AP 模式执行期间不处理 stop，BLE 模式只能依赖协作检查，两者都需要等待代码结束或手动复位。
+3. **单客户端**：WiFi WebSocket 与 BLE 各自同一时间只服务一个客户端，便于皮影机器人单操作者场景；两个通道同时连接时由 `_running` 串行化执行。
 4. **无云端 / 无账号 / 无多设备管理**：本工具按需求边界未实现这些能力。
 5. **舵机供电**：4 路舵机应使用独立电源并共地，ESP32 仅提供信号；本工具不涉及电源管理。
-6. **WiFi 模式 print 不进入前端日志**：用户代码的 `print()` 输出到 USB 串口，不进入 WebSocket 日志；固件协议日志仍会回传。
+6. **WiFi AP / BLE print 不进入前端日志**：用户代码的 `print()` 输出到 USB 串口，不进入无线日志；固件协议日志仍会回传。
+7. **BLE 吞吐与共存**：BLE 默认 20 字节分片，代码较大时上传明显慢于 WiFi；ESP32 的 WiFi AP 与 BLE 共用 2.4GHz 射频，同时开启会降低吞吐并增加内存压力，需实机确认稳定性。

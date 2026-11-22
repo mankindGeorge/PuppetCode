@@ -21,8 +21,11 @@ function loadSettings() {
     if (!Object.prototype.hasOwnProperty.call(MODE_LABEL, parsed.mode)) {
       parsed.mode = DEFAULTS.mode;
     }
+    // 旧的 STA 字段不再使用，读取时清理掉。
+    ['staIp', 'staPort', 'staSsid', 'staPassword'].forEach(function (key) {
+      if (Object.prototype.hasOwnProperty.call(parsed, key)) delete parsed[key];
+    });
     parsed.baudRate = useInteger(parsed.baudRate, DEFAULTS.baudRate, 1, Infinity);
-    parsed.staPort = useInteger(parsed.staPort, DEFAULTS.staPort, 1, 65535);
     parsed.apPort = useInteger(parsed.apPort, DEFAULTS.apPort, 1, 65535);
     return parsed;
   } catch (error) {

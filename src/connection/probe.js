@@ -1,4 +1,4 @@
-// 设备就绪探测：串口模式下主动发送 hello 握手；WiFi 模式仅做超时提示。
+// 设备就绪探测：串口模式下主动发送 hello 握手；WiFi AP / BLE 模式仅做超时提示。
 import { conn } from '../state.js';
 import { PROTOCOL_VERSION } from '../config.js';
 import { addLog } from '../ui/log.js';
@@ -42,6 +42,15 @@ export function startReadyProbe() {
       }
       sendHello();
     }, 1500);
+  } else if (conn.mode === 'ble') {
+    readyProbeTimer = setInterval(function () {
+      if (!conn.connected || conn.deviceReady) {
+        stopReadyProbe();
+        return;
+      }
+      stopReadyProbe();
+      addLog('warn', '未收到设备就绪消息，请检查蓝牙连接与固件蓝牙服务');
+    }, 4000);
   } else {
     readyProbeTimer = setInterval(function () {
       if (!conn.connected || conn.deviceReady) {

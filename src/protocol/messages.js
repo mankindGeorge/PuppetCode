@@ -1,5 +1,6 @@
 // 设备下行报文处理：ready / ack / log / done / error。
 import { conn, runtime } from '../state.js';
+import { MODE_LABEL } from '../config.js';
 import { addLog } from '../ui/log.js';
 import { updateConnUI, updateRunButtons } from '../ui/status.js';
 import { stopReadyProbe } from '../connection/probe.js';
@@ -11,8 +12,8 @@ export function handleDeviceMessage(message) {
   if (message.type === 'ready') {
     conn.deviceReady = true;
     stopReadyProbe();
-    var mode = message.mode || (conn.mode === 'serial' ? 'SERIAL' : 'WS');
-    addLog('success', '设备就绪 · ' + mode + ' · 协议 ' + (message.protocol || '-'));
+    var label = MODE_LABEL[conn.mode] || message.mode || '通信';
+    addLog('success', '设备就绪 · ' + label + ' · 协议 ' + (message.protocol || '-'));
     updateConnUI();
     return;
   }

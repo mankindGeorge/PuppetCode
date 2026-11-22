@@ -62,17 +62,17 @@ ipcMain.on('app:close-confirmed', () => {
 });
 
 function installSerialSupport(targetSession) {
-  // 允许页面使用 Web Serial 与剪贴板写入（代码预览区「复制代码」）
+  // 允许页面使用 Web Serial、Web Bluetooth 与剪贴板写入（代码预览区「复制代码」）
   targetSession.setPermissionCheckHandler((webContents, permission) => {
-    return permission === 'serial' || permission === 'clipboard-sanitized-write';
+    return permission === 'serial' || permission === 'bluetooth' || permission === 'clipboard-sanitized-write';
   });
 
   targetSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(permission === 'serial' || permission === 'clipboard-sanitized-write');
+    callback(permission === 'serial' || permission === 'bluetooth' || permission === 'clipboard-sanitized-write');
   });
 
   targetSession.setDevicePermissionHandler((details) => {
-    return details.deviceType === 'serial';
+    return details.deviceType === 'serial' || details.deviceType === 'bluetooth';
   });
 
   // 页面调用 navigator.serial.requestPort() 时触发；由本进程决定用哪个端口
@@ -109,6 +109,44 @@ function installSerialSupport(targetSession) {
     }
 
     callback(selected.portId);
+  });
+}
+
+// Web Bluetooth 的设备选择由主进程接管，页面只负责 requestDevice。
+function installBluetoothSupport(webContents) {
+  webContents.on('select-bluetooth-device', async (event, deviceList, callback) => {
+    event.preventDefault();
+
+    if (!deviceList || deviceList.length === 0) {
+      callback('');
+      return;
+    }
+
+    let selected = deviceList[0];
+
+    if (deviceList.length > 1) {
+      const labels = deviceList.map((device) => {
+        return device.deviceName || device.deviceId;
+      });
+
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        title: '选择蓝牙设备',
+        message: '检测到多个蓝牙设备，请选择 PuppetCode 机器人：',
+        buttons: labels.concat(['取消']),
+        defaultId: 0,
+        cancelId: labels.length,
+        noLink: true
+      });
+
+      if (result.response >= labels.length) {
+        callback('');
+        return;
+      }
+      selected = deviceList[result.response];
+    }
+
+    callback(selected.deviceId);
   });
 }
 
@@ -165,6 +203,9 @@ function createWindow() {
 
   // 单文件前端不使用弹窗，禁止页面自行打开新窗口
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  // Web Bluetooth：由主进程选择 BLE 设备
+  installBluetoothSupport(mainWindow.webContents);
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 

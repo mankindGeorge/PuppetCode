@@ -50,21 +50,28 @@ export async function connectDevice() {
   var mode = settings.mode;
 
   if (mode === 'serial' && !('serial' in navigator)) {
-    addLog('error', '当前浏览器不支持 Web Serial，请使用 Chrome / Edge，或切换到 WiFi 模式');
+    addLog('error', '当前浏览器不支持 Web Serial，请使用 Chrome / Edge，或切换到 WiFi / 蓝牙模式');
     setModalStatus('浏览器不支持 Web Serial', 'err');
+    return;
+  }
+  if (mode === 'ble' && !('bluetooth' in navigator)) {
+    addLog('error', '当前浏览器不支持蓝牙，请使用 Chrome / Edge 桌面或 Android Chrome');
+    setModalStatus('浏览器不支持蓝牙', 'err');
     return;
   }
 
   var config = null;
   if (mode === 'serial') {
     config = { baudRate: settings.baudRate };
+  } else if (mode === 'ble') {
+    config = {};
   } else {
-    var ip = mode === 'sta' ? settings.staIp : settings.apIp;
-    var port = mode === 'sta' ? settings.staPort : settings.apPort;
+    var ip = settings.apIp;
+    var port = settings.apPort;
     if (!ip) {
       addLog('warn', '请填写设备 IP');
       setModalStatus('请填写设备 IP', 'err');
-      (mode === 'sta' ? document.getElementById('staIp') : document.getElementById('apIp')).focus();
+      document.getElementById('apIp').focus();
       return;
     }
     if (!(port >= 1 && port <= 65535)) {

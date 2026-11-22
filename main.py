@@ -12,10 +12,10 @@
 通信方式：
     修改下方 COMM_MODE 常量后重新烧录 / 复位即可切换：
         "SERIAL"    USB 串口（Web Serial 直连）
-        "WIFI_STA"  设备与前端处于同一局域网，WebSocket 通信
-        "WIFI_AP"   前端连接设备热点，WebSocket 通信（默认）
+        "WIFI_AP"   设备热点 + WebSocket，同时开启 BLE（默认）
 
-依赖：仅使用 MicroPython 标准固件内置模块，无任何第三方库。
+    WiFi AP 与 BLE 共用同一套 JSON 报文；前端可以任选一种连接。
+    依赖：仅使用 MicroPython 标准固件内置模块，无任何第三方库。
 """
 
 import sys
@@ -28,24 +28,42 @@ import hashlib
 import socket
 import network
 
+try:
+    import bluetooth
+except ImportError:
+    try:
+        import ubluetooth as bluetooth
+    except ImportError:
+        bluetooth = None
+
 # =============================================================================
 # 一、顶部配置常量（修改后复位生效）
 # =============================================================================
 
-# 通信模式："SERIAL" | "WIFI_STA" | "WIFI_AP"
+# 通信模式："SERIAL" | "WIFI_AP"（WIFI_AP 同时开启 BLE）
 COMM_MODE = "WIFI_AP"
-
-# WiFi STA 模式：设备作为客户端连接的路由器
-WIFI_SSID = "YOUR_WIFI_SSID"
-WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
 
 # WiFi AP 模式：设备创建的热点
 AP_SSID = "puppet"
 AP_PASSWORD = "12345678"
 AP_IP = "192.168.4.1"
 
-# WebSocket 服务端口（STA / AP 共用）
+# WebSocket 服务端口（AP 模式）
 WS_PORT = 8080
+
+# 蓝牙（BLE）：与 AP 同时开启，使用 Nordic UART 风格服务
+BLE_ENABLED = True
+BLE_NAME = "puppet"
+BLE_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+BLE_RX_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+BLE_TX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+BLE_DEFAULT_MTU = 23
+
+# 蓝牙 IRQ 事件编号（MicroPython ubluetooth）
+_BLE_IRQ_CENTRAL_CONNECT = 1
+_BLE_IRQ_CENTRAL_DISCONNECT = 2
+_BLE_IRQ_GATTS_WRITE = 3
+_BLE_IRQ_MTU_EXCHANGED = 21
 
 # 协议版本：前端与设备仅做兼容性提示，不强制校验
 PROTOCOL_VERSION = "1.0"
@@ -89,6 +107,16 @@ _transport = None      # "SERIAL" | "WS"
 _out = None            # 原始 stdout（协议输出通道）
 _stdin = None          # 原始 stdin（串口输入）
 _ws_client = None      # 当前 WebSocket 客户端 socket
+
+_ble = None
+_ble_conn = None
+_ble_rx_handle = None
+_ble_tx_handle = None
+_ble_mtu = BLE_DEFAULT_MTU
+_ble_rx_buffer = bytearray()
+_ble_rx_lock = _thread.allocate_lock()
+_ble_ready_pending = False
+_ble_overflow = False
 
 
 class _StopRequested(Exception):
@@ -254,7 +282,7 @@ def _send_ready():
 
 
 def _send(message):
-    """统一发送入口：串口与 WebSocket 共用同一套 JSON 报文。"""
+    """统一发送入口：串口、WebSocket 与 BLE 共用同一套 JSON 报文。"""
     try:
         data = json.dumps(message)
     except Exception:
@@ -266,7 +294,10 @@ def _send(message):
             if _out is not None:
                 _out.write(data + "\n")
         elif _transport == "WS":
-            _ws_send_text(data)
+            # AP 与 BLE 同时开启：向已连接的通道广播，单通道失败不影响另一个。
+            if _ws_client is not None:
+                _ws_send_text(data)
+            _ble_send_text(data)
     except Exception:
         # 通信中断时不允许日志发送异常影响执行线程
         pass
@@ -515,39 +546,8 @@ def _run_serial():
 
 
 # =============================================================================
-# 八、WiFi 初始化（STA / AP）
+# 八、WiFi AP 与 BLE 初始化
 # =============================================================================
-
-def _wifi_sta():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    if not wlan.isconnected():
-        _debug("正在连接 WiFi: " + WIFI_SSID)
-        try:
-            wlan.connect(WIFI_SSID, WIFI_PASSWORD)
-        except Exception as error:
-            _debug("WiFi 连接调用失败: " + repr(error))
-
-        start = time.ticks_ms()
-        while not wlan.isconnected():
-            if time.ticks_diff(time.ticks_ms(), start) > 30000:
-                _debug("WiFi 连接超时，5 秒后重试")
-                time.sleep_ms(5000)
-                start = time.ticks_ms()
-                try:
-                    wlan.disconnect()
-                except Exception:
-                    pass
-                try:
-                    wlan.connect(WIFI_SSID, WIFI_PASSWORD)
-                except Exception:
-                    pass
-            time.sleep_ms(300)
-
-    ip = wlan.ifconfig()[0]
-    _debug("WiFi 已连接，设备 IP: " + ip)
-    return ip
-
 
 def _wifi_ap():
     ap = network.WLAN(network.AP_IF)
@@ -567,6 +567,154 @@ def _wifi_ap():
     ap.ifconfig((AP_IP, "255.255.255.0", AP_IP, AP_IP))
     _debug("热点已开启: " + AP_SSID + "，设备 IP: " + AP_IP)
     return AP_IP
+
+
+# =============================================================================
+# 八点五、蓝牙 BLE（与 AP 同时开启）
+# =============================================================================
+
+def _ble_advertise():
+    if _ble is None:
+        return
+    try:
+        payload = bluetooth.advertising_payload(
+            name=BLE_NAME,
+            services=[bluetooth.UUID(BLE_SERVICE_UUID)],
+        )
+        _ble.gap_advertise(100000, adv_data=payload)
+    except Exception:
+        try:
+            _ble.gap_advertise(100000)
+        except Exception:
+            pass
+
+
+def _ble_irq(event, data):
+    global _ble_conn, _ble_ready_pending, _ble_mtu, _stop_flag, _ble_overflow
+
+    if event == _BLE_IRQ_CENTRAL_CONNECT:
+        _ble_conn = data[0]
+        _ble_ready_pending = True
+        try:
+            _ble.gap_advertise(None)
+        except Exception:
+            pass
+    elif event == _BLE_IRQ_CENTRAL_DISCONNECT:
+        _ble_conn = None
+        _ble_rx_lock.acquire()
+        try:
+            del _ble_rx_buffer[:]
+        finally:
+            _ble_rx_lock.release()
+        _ble_advertise()
+    elif event == _BLE_IRQ_GATTS_WRITE:
+        attr = data[1]
+        if attr != _ble_rx_handle:
+            return
+        try:
+            chunk = _ble.gatts_read(_ble_rx_handle)
+        except Exception:
+            return
+        if not chunk:
+            return
+        _ble_rx_lock.acquire()
+        try:
+            _ble_rx_buffer.extend(chunk)
+            if len(_ble_rx_buffer) > MAX_WS_MESSAGE_BYTES:
+                del _ble_rx_buffer[:]
+                _ble_overflow = True
+        finally:
+            _ble_rx_lock.release()
+        # BLE 执行期间主线程/工作线程被占用，IRQ 直接置停止标志以支持协作停止。
+        if b'"type":"stop"' in chunk or b'"type": "stop"' in chunk:
+            _stop_flag = True
+    elif event == _BLE_IRQ_MTU_EXCHANGED:
+        try:
+            _ble_mtu = data[1]
+        except Exception:
+            _ble_mtu = BLE_DEFAULT_MTU
+
+
+def _ble_take_line():
+    _ble_rx_lock.acquire()
+    try:
+        index = _ble_rx_buffer.find(b"\n")
+        if index < 0:
+            return None
+        line = bytes(_ble_rx_buffer[:index])
+        del _ble_rx_buffer[:index + 1]
+    finally:
+        _ble_rx_lock.release()
+    if line.endswith(b"\r"):
+        line = line[:-1]
+    return line.decode("utf-8", "replace")
+
+
+def _ble_worker():
+    global _ble_ready_pending, _ble_overflow
+
+    while True:
+        if _ble_ready_pending and _ble_conn is not None:
+            _ble_ready_pending = False
+            _send_ready()
+        if _ble_overflow:
+            _ble_overflow = False
+            _send({
+                "type": "error",
+                "message": "蓝牙消息超过 512 KB 上限，已丢弃，请精简代码后重试",
+            })
+        line = _ble_take_line()
+        if line is None:
+            time.sleep_ms(10)
+            continue
+        _handle_line(line)
+
+
+def _ble_send_text(text):
+    if _ble is None or _ble_conn is None or _ble_tx_handle is None:
+        return
+    data = text.encode()
+    size = 20 if _ble_mtu <= BLE_DEFAULT_MTU else max(20, _ble_mtu - 3)
+    for offset in range(0, len(data), size):
+        try:
+            _ble.gatts_notify(_ble_conn, _ble_tx_handle, data[offset:offset + size])
+        except Exception:
+            break
+
+
+def _ble_start():
+    global _ble, _ble_rx_handle, _ble_tx_handle
+
+    if not BLE_ENABLED:
+        return
+    if bluetooth is None:
+        _debug("蓝牙不可用：固件未包含 bluetooth 模块")
+        return
+
+    try:
+        _ble = bluetooth.BLE()
+        _ble.active(True)
+        _ble.config(gap_name=BLE_NAME)
+
+        service = (
+            bluetooth.UUID(BLE_SERVICE_UUID),
+            (
+                (bluetooth.UUID(BLE_RX_UUID), 0x0008 | 0x0004),  # write + write_no_response
+                (bluetooth.UUID(BLE_TX_UUID), 0x0010),             # notify
+            ),
+        )
+        ((_ble_rx_handle, _ble_tx_handle),) = _ble.gatts_register_services((service,))
+        try:
+            _ble.gatts_set_buffer(_ble_rx_handle, 512, False)
+        except Exception:
+            pass
+        _ble.irq(_ble_irq)
+        _ble_advertise()
+        _thread.start_new_thread(_ble_worker, ())
+        _debug("蓝牙已启动: " + BLE_NAME)
+    except Exception as error:
+        _debug("蓝牙启动失败: " + repr(error))
+        _ble = None
 
 
 # =============================================================================
@@ -771,19 +919,16 @@ def main():
     _stdin = sys.stdin
 
     try:
-        _thread.stack_size(16 * 1024)
+        _thread.stack_size(32 * 1024)
     except Exception:
         pass
 
     servo_init()
 
-    if COMM_MODE == "WIFI_STA":
-        _transport = "WS"
-        ip = _wifi_sta()
-        _ws_server(ip)
-    elif COMM_MODE == "WIFI_AP":
+    if COMM_MODE == "WIFI_AP":
         _transport = "WS"
         _wifi_ap()
+        _ble_start()
         _ws_server(AP_IP)
     else:
         # 默认及非法配置均回退到 USB 串口模式

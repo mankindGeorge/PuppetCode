@@ -6,17 +6,13 @@ export const PROTOCOL_VERSION = '1.0';
 
 export const MODE_LABEL = {
   serial: 'USB 串口',
-  sta: 'WiFi STA',
-  ap: 'WiFi AP'
+  ap: 'WiFi AP',
+  ble: '蓝牙'
 };
 
 export const DEFAULTS = {
   mode: 'serial',
   baudRate: 115200,
-  staIp: '',
-  staPort: 8080,
-  staSsid: '',
-  staPassword: '',
   apIp: '192.168.4.1',
   apPort: 8080,
   apSsid: 'puppet',
