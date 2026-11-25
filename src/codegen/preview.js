@@ -4,7 +4,7 @@ import { runtime } from '../state.js';
 
 const CODE_HEADER = [
   '# 光影智编 · PuppetCode',
-  '# 目标硬件：ESP32 + 4 路舵机',
+  '# 目标硬件：ESP32 外设控制',
   ''
 ].join('\n');
 

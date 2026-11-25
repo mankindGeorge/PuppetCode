@@ -1,4 +1,4 @@
-// 自定义积木：皮影机器人专用语句块（Blockly 原生 JSON 定义）。
+// 自定义控制积木：舵机、延时与组合动作（Blockly 原生 JSON 定义）。
 import { Blockly } from '../vendor/index.js';
 
 export function defineCustomBlocks() {

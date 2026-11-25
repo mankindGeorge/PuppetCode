@@ -5,7 +5,7 @@
 - 适用固件：`main.py`（ESP32 / MicroPython 标准固件）
 - 适用前端：`index.html`（单文件，内联 Blockly 11.2.2 官方 UMD 构建与中文语言包）
 
-本工具面向 **4 路舵机皮影机器人**。硬件、积木、通信均按此边界设计，没有集成其他传感器或外设，也没有引入任何第三方依赖库。
+本工具面向 ESP32 外设控制的图形化编程场景：通信协议不绑定具体硬件，设备端执行前端下发的 MicroPython。当前固件内置舵机控制作为首批能力，新增外设按「积木 → Python 生成器 → 固件执行环境」扩展，不引入任何第三方依赖库。
 
 ---
 
@@ -14,7 +14,7 @@
 ```
 ┌──────────────────────────────┐        JSON 报文         ┌──────────────────────────┐
 │  index.html（浏览器）          │  ──────────────────────▶ │  ESP32 main.py            │
-│  Blockly → MicroPython 代码   │                          │  exec() 执行 / 4 路舵机    │
+│  Blockly → MicroPython 代码   │                          │  exec() 执行 / 外设控制    │
 │  Transport 抽象层             │  ◀────────────────────── │  servo_set / action_*      │
 └──────────────────────────────┘        ack / log / done   └──────────────────────────┘
         │                                                              ▲
@@ -367,7 +367,7 @@ WiFi AP 与 BLE 模式不替换 `sys.stdout`：用户代码的 `print()` 输出�
 
 固件上电先等待 3 秒（便于 Thonny / 串口连接），然后初始化通信与硬件。之后只做三件事：
 
-1. 初始化 4 路舵机 PWM（占空比 0，不输出脉冲，不产生动作）；
+1. 初始化内置执行器 PWM（占空比 0，不输出脉冲，不产生动作）；
 2. 初始化所选通信模块（`WIFI_AP` 时同时开启 AP 与 BLE）；
 3. 等待前端指令。
 
@@ -378,6 +378,8 @@ WiFi AP 与 BLE 模式不替换 `sys.stdout`：用户代码的 `print()` 输出�
 ## 6. 前端积木与底层函数映射
 
 ### 6.1 映射表
+
+下表为当前内置的舵机控制示例，不代表硬件边界；新增外设按「积木 → Python 生成器 → 固件执行环境」同一方式接入。
 
 | 积木（Blockly type） | 生成代码 | 底层实现 | 说明 |
 | --- | --- | --- | --- |
@@ -397,7 +399,7 @@ WiFi AP 与 BLE 模式不替换 `sys.stdout`：用户代码的 `print()` 输出�
 说明：
 
 - `logic_compare` 是让 `if` 条件可用所必需的比较积木，与条件判断同属一类。
-- 组合动作积木显示「开发中」，只生成空函数调用；固件函数体只有 `# TODO: 填充实际皮影动作逻辑` 与 `pass`。
+- 组合动作积木显示「开发中」，只生成空函数调用；固件函数体只有 `# TODO: 填充实际动作逻辑` 与 `pass`。
 - 代码生成器复用 Blockly 内置的 Python 生成器（MicroPython 属于 Python 3 方言），仅追加自定义积木的 `forBlock` 映射。
 
 ### 6.2 生成示例
@@ -415,7 +417,7 @@ WiFi AP 与 BLE 模式不替换 `sys.stdout`：用户代码的 `print()` 输出�
 
 ```python
 # 光影智编 · PuppetCode
-# 目标硬件：ESP32 + 4 路舵机
+# 目标硬件：ESP32 外设控制
 
 for count in range(3):
   servo_set(1, 90)
@@ -494,7 +496,7 @@ Blockly.Python.forBlock['puppet_servo_speed'] = function (block, generator) {
 
 ```python
 def action_turn():
-    # TODO: 填充实际皮影动作逻辑
+    # TODO: 填充实际动作逻辑
     pass
 ```
 
@@ -583,7 +585,7 @@ connect() → 等待 ready（或发 hello）
 | `BLE_ENABLED` | `True` | 是否同时开启 BLE |
 | `BLE_NAME` | `puppet` | BLE 设备名 |
 | `BLE_SERVICE_UUID` / `BLE_RX_UUID` / `BLE_TX_UUID` | NUS 风格 128 位 UUID | 见 `main.py`；RX 写入、TX 通知 |
-| `SERVO_PINS` | `(2, 4, 13, 14)` | 4 路舵机 GPIO |
+| `SERVO_PINS` | `(2, 4, 13, 14)` | 当前内置舵机控制 GPIO |
 | `STOP_TIMEOUT_MS` | `3000` | 串口模式停止超时后软复位 |
 | `MAX_LOG_BUFFER_CHARS` | `4096` | 串口模式无换行日志残留上限 |
 
@@ -595,8 +597,8 @@ connect() → 等待 ready（或发 hello）
 
 1. **Web Serial 浏览器支持**：仅 Chromium 系浏览器；不支持时请使用 WiFi AP / BLE。
 2. **停止的强制恢复**：串口模式纯计算死循环依赖软复位，软复位会中断 WiFi 连接；WiFi AP 模式执行期间不处理 stop，BLE 模式只能依赖协作检查，两者都需要等待代码结束或手动复位。
-3. **单客户端**：WiFi WebSocket 与 BLE 各自同一时间只服务一个客户端，便于皮影机器人单操作者场景；两个通道同时连接时由 `_running` 串行化执行。
+3. **单客户端**：WiFi WebSocket 与 BLE 各自同一时间只服务一个客户端，便于单操作者场景；两个通道同时连接时由 `_running` 串行化执行。
 4. **无云端 / 无账号 / 无多设备管理**：本工具按需求边界未实现这些能力。
-5. **舵机供电**：4 路舵机应使用独立电源并共地，ESP32 仅提供信号；本工具不涉及电源管理。
+5. **舵机供电**：当前内置舵机控制应使用独立电源并共地，ESP32 仅提供信号；本工具不涉及电源管理。
 6. **WiFi AP / BLE print 不进入前端日志**：用户代码的 `print()` 输出到 USB 串口，不进入无线日志；固件协议日志仍会回传。
 7. **BLE 吞吐与共存**：BLE 默认 20 字节分片，代码较大时上传明显慢于 WiFi；ESP32 的 WiFi AP 与 BLE 共用 2.4GHz 射频，同时开启会降低吞吐并增加内存压力，需实机确认稳定性。

@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "private": true,
   "type": "module",
-  "description": "光影智编 · 4 路舵机图形化编程界面（Blockly + MicroPython）",
+  "description": "光影智编 · ESP32 硬件图形化编程工具（Blockly + MicroPython）",
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode singlefile",

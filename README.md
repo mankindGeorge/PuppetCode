@@ -1,6 +1,6 @@
 # 光影智编（PuppetCode）
 
-面向儿童的 4 路舵机皮影机器人图形化编程工具。拖拽积木生成 MicroPython，通过 USB 串口、WiFi AP 或蓝牙 BLE 发送到 ESP32 执行。
+面向儿童与硬件编程初学者的 ESP32 图形化编程工具。拖拽积木生成 MicroPython，通过 USB 串口、WiFi AP 或蓝牙 BLE 发送到 ESP32 执行；不绑定具体外设，可按「积木 → Python 生成器 → 固件执行环境」扩展其他硬件。
 
 当前为 **v1.0.1 预发布**；真实硬件路径尚未实机验证，组合动作积木仍在开发中。
 
@@ -11,7 +11,7 @@ Windows 10 / 11（x64）：
 - [下载 PuppetCode-v1.0.1-win32-x64.zip](https://github.com/mankindGeorge/PuppetCode/releases/download/v1.0.1/PuppetCode-v1.0.1-win32-x64.zip)
 - [Release 页面](https://github.com/mankindGeorge/PuppetCode/releases/tag/v1.0.1)
 
-解压后运行 `PuppetCode.exe`，不要单独拷贝 exe，需保留整个文件夹。桌面版未签名，SmartScreen 可能提示；SHA256 见 Release 说明。机器人端需烧录 `main.py`，并按实际接线修改 `SERVO_PINS` 与 `COMM_MODE`；默认 AP 热点为 `puppet`（密码 `12345678`，设备 IP `192.168.4.1`），BLE 设备名同为 `puppet`。
+解压后运行 `PuppetCode.exe`，不要单独拷贝 exe，需保留整个文件夹。桌面版未签名，SmartScreen 可能提示；SHA256 见 Release 说明。设备端需烧录 `main.py`，并按实际接线修改硬件引脚（当前为 `SERVO_PINS`）与 `COMM_MODE`；默认 AP 热点为 `puppet`（密码 `12345678`，设备 IP `192.168.4.1`），BLE 设备名同为 `puppet`。
 
 ## 通信协议
 
@@ -23,7 +23,7 @@ Windows 10 / 11（x64）：
 - UTF-8 编码，协议版本 1.0
 - 消息类型：`hello`、`ready`、`run`、`stop`、`ack`、`log`、`done`、`error`
 - 报文只增不改；未知字段和未知类型忽略；串口单行 256 KB、WebSocket 单条 512 KB
-- 固件：ESP32 MicroPython，4 路舵机默认 GPIO 2 / 4 / 13 / 14
+- 固件：ESP32 MicroPython；当前内置舵机控制示例默认 GPIO 2 / 4 / 13 / 14
 
 ## 从源码运行
 
@@ -65,7 +65,7 @@ git push origin feat/my-change
 
 4. 向 `mankindGeorge/PuppetCode` 的 `main` 分支发起 Pull Request，说明改了什么、如何验证。
 
-约束：硬件边界固定为 4 路舵机；协议只增不改；不要提交 `dist/`、`node_modules/`、`build/electron/index.html`。开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+约束：不预设硬件种类，新增外设按「积木 → Python 生成器 → 固件执行环境」扩展；协议只增不改；不要提交 `dist/`、`node_modules/`、`build/electron/index.html`。开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 文档
 
